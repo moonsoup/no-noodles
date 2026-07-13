@@ -45,9 +45,23 @@ This copies both hooks and the skill doc into `~/.claude/` (or `$CLAUDE_CONFIG_D
 ./install.sh --uninstall   # removes the copied files and hook registrations
 ```
 
-## Toggle
+## Configure
 
-Each hook reads its own state file — on by default, independently switchable:
+**Per-project or per-preference (finer-grained):** run the `/noodle-options` skill in Claude
+Code. It asks which rule(s), which scope (this project only, or your global default), and
+on/off, then writes `./.no-noodles.json` (project-local) or `~/.claude/no-noodles.json`
+(global) accordingly:
+
+```json
+{ "no_ad_hoc_probes": "on", "check_before_build": "off" }
+```
+
+Resolution order (first match wins): project-local JSON → global JSON → legacy state file →
+default on. Project-local always overrides global, so one project can opt out of a rule you've
+otherwise turned on everywhere else, or vice versa.
+
+**Blunt global toggle (unchanged):** each hook still reads its own state file too — on by
+default, independently switchable:
 
 ```bash
 echo off > ~/.claude/no-noodle.state             # disable rule 1's hook
@@ -60,10 +74,11 @@ echo off > ~/.claude/check-before-build.state    # disable rule 4's hook
 ```bash
 ./tests/test_no_noodle.sh
 ./tests/test_check_before_build.sh
+./tests/test_lib_config.sh
 ./tests/test_install.sh
 ```
 
-Both run the real hook scripts against synthetic JSON on stdin — the same shape Claude Code sends a PreToolUse hook — so nothing real is ever touched or executed.
+These run the real hook scripts against synthetic JSON on stdin — the same shape Claude Code sends a PreToolUse hook — so nothing real is ever touched or executed.
 
 ## Files
 
@@ -71,11 +86,15 @@ Both run the real hook scripts against synthetic JSON on stdin — the same shap
 hooks/
   no_noodle.sh           # rule 1 enforcement
   check_before_build.sh  # rule 4 enforcement
+  lib_config.sh           # shared per-project/global config resolution
 skills/
   no-noodle.md           # the full four-rule doc, invoked by name or when told "stop noodling"
+  noodle-options.md      # /noodle-options -- configure per-project or global preference
 tests/
   test_no_noodle.sh
   test_check_before_build.sh
+  test_lib_config.sh
+  test_install.sh
 install.sh
 ```
 

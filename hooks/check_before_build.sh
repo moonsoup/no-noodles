@@ -18,8 +18,13 @@ TOOL=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).g
 # ADJUSTABLE / SWITCHABLE, same convention as no_noodle.sh:
 #   off:  echo off > ~/.claude/check-before-build.state
 #   on :  echo on  > ~/.claude/check-before-build.state   (or delete the file — default)
+# Finer-grained, per-project or per-preference config (JSON, checked first) is
+# available via the `/noodle-options` skill — see hooks/lib_config.sh.
 STATE="$HOME/.claude/check-before-build.state"
-[ -f "$STATE" ] && [ "$(tr -d '[:space:]' < "$STATE" 2>/dev/null)" = "off" ] && exit 0
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib_config.sh
+source "$HOOK_DIR/lib_config.sh"
+[ "$(resolve_state check_before_build "$STATE")" = "off" ] && exit 0
 
 FILE_PATH=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null)
 CONTENT=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('content',''))" 2>/dev/null)

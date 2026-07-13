@@ -14,12 +14,14 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 
 HOOK_NO_NOODLE="$CLAUDE_DIR/hooks/no_noodle.sh"
 HOOK_CHECK_BUILD="$CLAUDE_DIR/hooks/check_before_build.sh"
+HOOK_LIB_CONFIG="$CLAUDE_DIR/hooks/lib_config.sh"
 SKILL_FILE="$CLAUDE_DIR/skills/no-noodle.md"
+SKILL_OPTIONS_FILE="$CLAUDE_DIR/skills/noodle-options.md"
 
 uninstall() {
   echo "no-noodles: removing installed files..."
-  rm -f "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$SKILL_FILE"
-  rm -f "$CLAUDE_DIR/no-noodle.state" "$CLAUDE_DIR/check-before-build.state"
+  rm -f "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$HOOK_LIB_CONFIG" "$SKILL_FILE" "$SKILL_OPTIONS_FILE"
+  rm -f "$CLAUDE_DIR/no-noodle.state" "$CLAUDE_DIR/check-before-build.state" "$CLAUDE_DIR/no-noodles.json"
   if [ -f "$SETTINGS" ] && command -v python3 >/dev/null 2>&1; then
     python3 - "$SETTINGS" <<'PYEOF'
 import json, sys
@@ -46,9 +48,11 @@ mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills"
 
 cp "$PKG_DIR/hooks/no_noodle.sh" "$HOOK_NO_NOODLE"
 cp "$PKG_DIR/hooks/check_before_build.sh" "$HOOK_CHECK_BUILD"
+cp "$PKG_DIR/hooks/lib_config.sh" "$HOOK_LIB_CONFIG"
 cp "$PKG_DIR/skills/no-noodle.md" "$SKILL_FILE"
-chmod +x "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD"
-echo "no-noodles: copied hooks + skill into $CLAUDE_DIR"
+cp "$PKG_DIR/skills/noodle-options.md" "$SKILL_OPTIONS_FILE"
+chmod +x "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$HOOK_LIB_CONFIG"
+echo "no-noodles: copied hooks + skills into $CLAUDE_DIR"
 
 if [ ! -f "$SETTINGS" ]; then
   echo '{"hooks":{"PreToolUse":[{"hooks":[]}]}}' > "$SETTINGS"
@@ -87,7 +91,9 @@ PYEOF
 
 echo ""
 echo "no-noodles: installed. Both hooks are ON by default."
-echo "  Toggle off:  echo off > $CLAUDE_DIR/no-noodle.state"
-echo "               echo off > $CLAUDE_DIR/check-before-build.state"
-echo "  Toggle on:   rm those files, or echo on > <file>"
+echo "  Configure per-project or per-preference: run the /noodle-options skill in Claude Code."
+echo "  Blunt global toggle (unchanged):"
+echo "    off:  echo off > $CLAUDE_DIR/no-noodle.state"
+echo "          echo off > $CLAUDE_DIR/check-before-build.state"
+echo "    on :  rm those files, or echo on > <file>"
 echo "  Uninstall:   $0 --uninstall"

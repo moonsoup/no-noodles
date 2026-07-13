@@ -13,8 +13,13 @@ TOOL=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).g
 # ADJUSTABLE / SWITCHABLE — the ">> no-noodles" toggle:
 #   off:  echo off > ~/.claude/no-noodle.state   (disable enforcement, like a mode)
 #   on :  echo on  > ~/.claude/no-noodle.state   (or delete the file — enforce; default)
+# Finer-grained, per-project or per-preference config (JSON, checked first) is
+# available via the `/noodle-options` skill — see hooks/lib_config.sh.
 STATE="$HOME/.claude/no-noodle.state"
-[ -f "$STATE" ] && [ "$(tr -d '[:space:]' < "$STATE" 2>/dev/null)" = "off" ] && exit 0
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib_config.sh
+source "$HOOK_DIR/lib_config.sh"
+[ "$(resolve_state no_ad_hoc_probes "$STATE")" = "off" ] && exit 0
 
 CMD=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
 

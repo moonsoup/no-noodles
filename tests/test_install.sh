@@ -31,7 +31,9 @@ RC=$?
 [ "$RC" -eq 0 ]; check "install exits 0 on a fresh scratch dir" $?
 [ -x "$FAKE_CLAUDE/hooks/no_noodle.sh" ]; check "no_noodle.sh installed and executable" $?
 [ -x "$FAKE_CLAUDE/hooks/check_before_build.sh" ]; check "check_before_build.sh installed and executable" $?
+[ -x "$FAKE_CLAUDE/hooks/lib_config.sh" ]; check "lib_config.sh installed and executable" $?
 [ -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc installed" $?
+[ -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill installed" $?
 [ -f "$FAKE_CLAUDE/settings.json" ]; check "settings.json created" $?
 
 python3 -c "
@@ -76,7 +78,9 @@ RC=$?
 [ "$RC" -eq 0 ]; check "uninstall exits 0" $?
 [ ! -f "$FAKE_CLAUDE/hooks/no_noodle.sh" ]; check "no_noodle.sh removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/check_before_build.sh" ]; check "check_before_build.sh removed" $?
+[ ! -f "$FAKE_CLAUDE/hooks/lib_config.sh" ]; check "lib_config.sh removed" $?
 [ ! -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc removed" $?
+[ ! -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill removed" $?
 python3 -c "
 import json
 data = json.load(open('$FAKE_CLAUDE/settings.json'))

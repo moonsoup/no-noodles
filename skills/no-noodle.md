@@ -7,10 +7,15 @@ description: The anti-noodle discipline — no ad-hoc probes, no tangents, no ha
 
 **Noodling = improvised, meandering work: ad-hoc terminal probes, side-quest tangents, and handing the turn back the moment something goes green.** It feels productive and isn't. Four rules; hooks enforce the structural slice of #1 and #4, the rest are on you.
 
-## Switching it (the `>> no-noodles` toggle)
-Adjustable like a mode — the hook reads `~/.claude/no-noodle.state`:
-- **off:** `echo off > ~/.claude/no-noodle.state` — enforcement disabled.
-- **on:** `echo on > ~/.claude/no-noodle.state` (or delete the file) — enforcing (default).
+## Switching it
+Two layers, both still supported:
+- **Per-project or per-preference (finer-grained):** run `/noodle-options` to turn either rule
+  on/off, scoped to the current project (`./.no-noodles.json`) or globally
+  (`~/.claude/no-noodles.json`). Project-local always wins over global.
+- **Blunt global toggle (the original `>> no-noodles` mode, unchanged):** the hook reads
+  `~/.claude/no-noodle.state` / `~/.claude/check-before-build.state`:
+  - **off:** `echo off > ~/.claude/no-noodle.state` — enforcement disabled.
+  - **on:** `echo on > ~/.claude/no-noodle.state` (or delete the file) — enforcing (default).
 
 (Claude Code's real shift+tab modes are internal and can't be extended, so this is the one-word equivalent.)
 
