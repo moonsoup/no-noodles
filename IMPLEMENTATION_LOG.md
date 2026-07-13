@@ -7,7 +7,7 @@ commit as the change, per `skills/no-noodle.md`. This exists per explicit
 user requirement (2026-07-13): "keep careful records of how we implement
 this through the entire process."
 
-Full design plan: see the session's plan file (ZTAI research, external
+Full design plan: `docs/RISK_MODEL_PLAN.md` (ZTAI research, external
 prior-art research including sh-guard/OPA/Falco/NIST-800-207/UEBA/GuardFall,
 right-brain's shadow-scoring pattern) — this log records what actually
 landed and any deviations from that plan, not the plan itself.
