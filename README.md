@@ -87,6 +87,9 @@ hooks/
   no_noodle.sh           # rule 1 enforcement
   check_before_build.sh  # rule 4 enforcement
   lib_config.sh           # shared per-project/global config resolution
+  lib_risk.sh             # weighted risk model: static scoring (Phase 1, not yet wired into a hook)
+  risk_score.py           # the actual scoring engine lib_risk.sh wraps
+  risk-rules.json         # seed rule table for the risk model
 skills/
   no-noodle.md           # the full four-rule doc, invoked by name or when told "stop noodling"
   noodle-options.md      # /noodle-options -- configure per-project or global preference
@@ -95,6 +98,8 @@ tests/
   test_check_before_build.sh
   test_lib_config.sh
   test_install.sh
+  test_lib_risk.sh
+IMPLEMENTATION_LOG.md    # append-only build record for the risk model (required per commit)
 install.sh
 ```
 

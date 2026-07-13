@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "intent_weights": {
+    "read": 5,
+    "write": 15,
+    "network": 20,
+    "execute": 25,
+    "delete": 35,
+    "privilege": 40
+  },
+  "context_multipliers": {
+    "project": 1.0,
+    "home": 1.3,
+    "system": 1.8,
+    "root": 2.5
+  },
+  "tiers": [
+    {"name": "Safe", "max": 20},
+    {"name": "Caution", "max": 50},
+    {"name": "Danger", "max": 80},
+    {"name": "Critical", "max": 100}
+  ],
+  "flag_penalties": [
+    {"pattern": "(-rf|-fr|--recursive.*--force|--force.*--recursive)\\b", "penalty": 20, "reason": "recursive+force combo removes without confirmation"},
+    {"pattern": "--no-verify\\b", "penalty": 15, "reason": "explicitly bypasses a safety hook"},
+    {"pattern": "(^|\\s)-y(\\s|$)|--yes\\b|--assume-yes\\b", "penalty": 10, "reason": "auto-confirms, removing the human checkpoint"},
+    {"pattern": "--force\\b(?!.*--force-with-lease)", "penalty": 15, "reason": "overrides a normal safety check"}
+  ],
+  "rules": [
+    {"pattern": "\\brm\\s+.*-[a-z]*r[a-z]*f|\\brm\\s+.*-[a-z]*f[a-z]*r", "intent": "delete", "base_score": 40, "risk_category": "Blast Radius", "reason": "recursive forced delete"},
+    {"pattern": "\\brm\\s+-[a-z]*f", "intent": "delete", "base_score": 25, "risk_category": "Blast Radius", "reason": "forced delete, no confirmation"},
+    {"pattern": "\\bdd\\s+.*of=/dev/", "intent": "delete", "base_score": 50, "risk_category": "Blast Radius", "reason": "raw block-device write, can destroy a whole disk"},
+    {"pattern": "\\bmkfs(\\.|\\s)", "intent": "delete", "base_score": 50, "risk_category": "Blast Radius", "reason": "formats a filesystem"},
+    {"pattern": "\\bdiskutil\\s+(erase|reformat)", "intent": "delete", "base_score": 45, "risk_category": "Blast Radius", "reason": "erases a disk/volume"},
+    {"pattern": "\\bgit\\s+push\\s+.*--force(?!-with-lease)", "intent": "write", "base_score": 30, "risk_category": "Untraceability", "reason": "force-push can overwrite remote history"},
+    {"pattern": "\\bgit\\s+reset\\s+--hard", "intent": "delete", "base_score": 20, "risk_category": "Blast Radius", "reason": "discards uncommitted work"},
+    {"pattern": "\\bgit\\s+clean\\s+.*-[a-z]*f[a-z]*d|\\bgit\\s+clean\\s+.*-[a-z]*d[a-z]*f", "intent": "delete", "base_score": 20, "risk_category": "Blast Radius", "reason": "deletes untracked files/dirs"},
+    {"pattern": "(curl|wget)[^|]*\\|\\s*(sh|bash|zsh|python3?|node|perl|ruby)\\b", "intent": "execute", "base_score": 45, "risk_category": "Supply Chain", "reason": "executes remote content without inspection"},
+    {"pattern": "\\bbase64\\s+(-d|--decode|-D)\\b", "intent": "execute", "base_score": 20, "risk_category": "Untraceability", "reason": "decodes an opaque blob before use"},
+    {"pattern": "\\bsudo\\s+", "intent": "privilege", "base_score": 20, "risk_category": "Critical System Interaction", "reason": "elevates privilege for the command"},
+    {"pattern": "\\bchmod\\s+.*777|\\bchmod\\s+.*-R\\s+777", "intent": "privilege", "base_score": 20, "risk_category": "Critical System Interaction", "reason": "world-writable permissions"},
+    {"pattern": "\\bchown\\s+.*-R\\s+", "intent": "privilege", "base_score": 15, "risk_category": "Critical System Interaction", "reason": "recursive ownership change"},
+    {"pattern": "\\bcat\\s+.*\\.(ssh/id_rsa|ssh/id_ed25519|aws/credentials|env)\\b", "intent": "read", "base_score": 15, "risk_category": "Credential Exposure", "reason": "reads a credential file into the transcript"},
+    {"pattern": "\\bnc\\s+-l|\\bnetcat\\s+-l|\\bncat\\s+-l", "intent": "network", "base_score": 25, "risk_category": "Blast Radius", "reason": "opens a listening network socket"},
+    {"pattern": "\\bssh-keygen\\s+.*-f\\s+.*id_", "intent": "write", "base_score": 15, "risk_category": "Credential Exposure", "reason": "generates/overwrites a key file"},
+    {"pattern": "\\bkill\\s+-9\\s+1\\b|\\bkillall\\s+-9\\s+launchd", "intent": "privilege", "base_score": 40, "risk_category": "Critical System Interaction", "reason": "targets the init process"},
+    {"pattern": "\\bnpm\\s+publish\\b|\\bpip\\s+.*upload\\b|\\btwine\\s+upload\\b", "intent": "network", "base_score": 30, "risk_category": "Supply Chain", "reason": "publishes a package publicly"},
+    {"pattern": "\\bcrontab\\s+-r\\b", "intent": "delete", "base_score": 20, "risk_category": "Blast Radius", "reason": "removes all scheduled jobs"},
+    {"pattern": "\\biptables\\s+-F\\b|\\bpfctl\\s+-F\\b", "intent": "privilege", "base_score": 25, "risk_category": "Critical System Interaction", "reason": "flushes firewall rules"},
+    {"pattern": "\\bdefaults\\s+delete\\b", "intent": "delete", "base_score": 15, "risk_category": "Blast Radius", "reason": "removes a system preference domain"},
+    {"pattern": "\\bshutdown\\b|\\breboot\\b|\\bhalt\\b", "intent": "privilege", "base_score": 20, "risk_category": "Critical System Interaction", "reason": "affects whole-system availability"}
+  ],
+  "fileset_sensitivity": [
+    {"pattern": "\\.env(\\.|$)", "sensitivity": "high", "reason": "environment/secrets file"},
+    {"pattern": "\\.ssh/", "sensitivity": "high", "reason": "SSH key material"},
+    {"pattern": "(^|/)\\.aws/", "sensitivity": "high", "reason": "cloud credentials"},
+    {"pattern": "_rsa$|_ed25519$|\\.pem$|\\.p12$|\\.pfx$", "sensitivity": "high", "reason": "private key material"},
+    {"pattern": "credentials|secrets\\.json|\\.npmrc$|\\.pypirc$", "sensitivity": "high", "reason": "stored credentials/tokens"},
+    {"pattern": "(^|/)\\.git/", "sensitivity": "medium", "reason": "repo internals, not typically hand-edited"}
+  ]
+}

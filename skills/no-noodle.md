@@ -37,3 +37,12 @@ New capability belongs *inside* the existing pipeline it's part of — as a flag
 
 ## When you catch yourself noodling
 Name it, drop the riff, and return to the plan's next concrete step. If there's no plan, that's the tell — make one, then execute it.
+
+## Weighted risk model — implementation record requirement
+The risk-scoring feature (`hooks/lib_risk.sh`, `hooks/risk_gate.sh`, `hooks/risk-rules.json`,
+`hooks/risk_score.py`, the risk-profile schema) has its own non-negotiable discipline on top of
+the four rules above: **any commit touching those files must append an entry to
+`IMPLEMENTATION_LOG.md` in the same commit** — what landed, which prior-art research it applied,
+any deviations from the plan, and any open questions/known limitations surfaced. This is
+social/skill-level, not hook-enforced (a hook can't verify prose quality, same reasoning as rules
+#2/#3 above) — self-enforce it the same way.
