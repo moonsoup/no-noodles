@@ -29,6 +29,12 @@ source "$HOOK_DIR/lib_config.sh"
 FILE_PATH=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null)
 CONTENT=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('content',''))" 2>/dev/null)
 
+# Phase 3 observation log (docs/RISK_MODEL_PLAN.md) -- same additive,
+# never-blocking wiring as no_noodle.sh. This rule guards Write calls, not
+# Bash commands, so the "command" logged is a synthesized `write <path>`
+# signal rather than a literal shell command.
+( source "$HOOK_DIR/lib_observe.sh" && risk_observe "write $FILE_PATH" "$FILE_PATH" ) >/dev/null 2>&1
+
 [ -z "$FILE_PATH" ] && exit 0
 
 # Only new files (Write on an existing path is an intentional overwrite/edit,

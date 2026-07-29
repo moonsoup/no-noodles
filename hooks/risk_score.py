@@ -140,16 +140,67 @@ def score_command(command, target_path, rules):
     }
 
 
+def apply_profile_adjustment(primary_result, profile, rules):
+    """Phase 3 shadow score: primary's score adjusted by a learned per-
+    risk_category multiplier from risk-profile.json's command_adjustments.
+    Never mutates primary_result or influences it -- this is purely a second,
+    independently-computed number for the shadow scorer to log and be graded
+    against primary, per the plan's right-brain shadow-scoring pattern
+    ("primary always ships... shadow never influences what ships").
+
+    A category with no learned adjustment yet (including an entirely empty/
+    absent profile) defaults to multiplier 1.0 -- shadow equals primary until
+    real learned adjustments exist, which is exactly what makes running this
+    safe from day one in shadow-only mode: an empty profile can't diverge
+    shadow from primary, so promotion always starts from 100% agreement.
+    """
+    category = primary_result.get("risk_category") or "unmatched"
+    adjustments = (profile or {}).get("command_adjustments", {})
+    multiplier = adjustments.get(category, 1.0)
+    try:
+        multiplier = float(multiplier)
+    except (TypeError, ValueError):
+        multiplier = 1.0
+    shadow_score = max(0, min(100, round(primary_result["score"] * multiplier)))
+    return {
+        "score": shadow_score,
+        "tier": classify_tier(shadow_score, rules),
+        "risk_category": primary_result.get("risk_category"),
+        "reason": primary_result.get("reason"),
+        "intent": primary_result.get("intent"),
+        "matched": primary_result.get("matched"),
+        "flags_matched": primary_result.get("flags_matched", []),
+        "multiplier_applied": multiplier,
+    }
+
+
 def main(argv=None):
     argv = argv if argv is not None else sys.argv[1:]
     if len(argv) < 2:
-        print("usage: risk_score.py <rules.json> <command> [target_path]", file=sys.stderr)
+        print("usage: risk_score.py <rules.json> <command> [target_path] [profile.json]", file=sys.stderr)
         return 2
     rules_path, command = argv[0], argv[1]
     target_path = argv[2] if len(argv) > 2 else ""
+    profile_path = argv[3] if len(argv) > 3 else None
     rules = load_rules(rules_path)
     result = score_command(command, target_path, rules)
-    print(json.dumps(result))
+
+    # Existing 2-3-arg CLI shape (flat primary result) is UNCHANGED -- every
+    # existing caller (lib_risk.sh's risk_score) keeps working byte-for-byte.
+    # A 4th arg (profile path) is strictly additive: wraps the same primary
+    # result plus a shadow score under {"primary": ..., "shadow": ...}.
+    if profile_path is None:
+        print(json.dumps(result))
+        return 0
+
+    try:
+        with open(profile_path) as f:
+            profile = json.load(f)
+    except Exception:
+        profile = None  # missing/malformed profile -> shadow defaults to == primary
+
+    shadow = apply_profile_adjustment(result, profile, rules)
+    print(json.dumps({"primary": result, "shadow": shadow}))
     return 0
 
 

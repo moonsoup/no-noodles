@@ -94,6 +94,30 @@ COMBINED_SCORE="$(score_of "sudo rm -rf /")"
 [ "$COMBINED_SCORE" -eq "$(score_of "rm -rf /")" ]
 check "known limitation: sudo+rm-rf scores the same as plain rm-rf (first-match-only, not combined)" $?
 
+# --- Phase 3: risk_shadow_score -- a second, independent number, never
+# influencing primary. Empty/absent profile -> shadow == primary (safe
+# from-day-one default for shadow-only mode, see risk_score.py). ---
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+NO_PROFILE="$TMP/does-not-exist.json"
+
+SHADOW_OUT="$(risk_shadow_score "rm -rf /tmp/foo" "" "$NO_PROFILE")"
+PRIMARY_SCORE="$(echo "$SHADOW_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["primary"]["score"])')"
+SHADOW_SCORE="$(echo "$SHADOW_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["shadow"]["score"])')"
+[ "$PRIMARY_SCORE" = "$SHADOW_SCORE" ]; check "risk_shadow_score: missing profile -> shadow equals primary" $?
+
+PROFILE="$TMP/risk-profile.json"
+echo '{"version": 1, "mode": "shadow-only", "command_adjustments": {"Blast Radius": 0.5}}' > "$PROFILE"
+SHADOW_OUT="$(risk_shadow_score "rm -rf /tmp/foo" "" "$PROFILE")"
+PRIMARY_SCORE="$(echo "$SHADOW_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["primary"]["score"])')"
+SHADOW_SCORE="$(echo "$SHADOW_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["shadow"]["score"])')"
+[ "$SHADOW_SCORE" -lt "$PRIMARY_SCORE" ]; check "risk_shadow_score: a learned 0.5x adjustment lowers shadow below primary" $?
+[ "$PRIMARY_SCORE" = "$(score_of "rm -rf /tmp/foo")" ]; check "risk_shadow_score: primary is unaffected by the profile (never influences what ships)" $?
+
+OUT="$(RISK_RULES_FILE=/nonexistent/rules.json risk_shadow_score "rm -rf /" "" "$PROFILE" 2>&1)"
+RC=$?
+[ "$RC" -eq 0 ]; check "risk_shadow_score: missing rules file still exits 0 (fails open, never blocks the caller)" $?
+
 echo ""
 if [ "$FAILS" -eq 0 ]; then
 	echo "LIB_RISK TEST: ALL CHECKS PASSED."

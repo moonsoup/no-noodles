@@ -24,10 +24,30 @@ HOOK_RISK_SUMMARY_PY="$CLAUDE_DIR/hooks/risk_summary.py"
 HOOK_GRANT_TRUST="$CLAUDE_DIR/hooks/grant_session_trust.sh"
 SKILL_FILE="$CLAUDE_DIR/skills/no-noodle.md"
 SKILL_OPTIONS_FILE="$CLAUDE_DIR/skills/noodle-options.md"
+# ALSO install as commands, because a flat `.md` under skills/ is NOT loaded.
+#
+# Found empirically 2026-07-29, after weeks of the discipline being unopenable:
+# `/no-noodle` returned "Unknown skill" and neither doc appeared in the session's
+# skill list, in EITHER config dir. What registers at user level is
+# `$CLAUDE_DIR/commands/<name>.md` (proven against `commands/drive-status.md`,
+# which is invocable). The skill text has always said "run /noodle-options" — a
+# command was the intent from the start; the installer simply wrote to an inert
+# path.
+#
+# Why this mattered so much: the two PreToolUse hooks worked perfectly the whole
+# time, so noodling got BLOCKED without the agent being able to read the document
+# that explains what to do instead. Enforcement without the explanation is how
+# the discipline turned into decoration.
+#
+# The skills/ copies are kept as-is (never remove an install path something else
+# may rely on); these are additional.
+COMMAND_FILE="$CLAUDE_DIR/commands/no-noodle.md"
+COMMAND_OPTIONS_FILE="$CLAUDE_DIR/commands/noodle-options.md"
 
 uninstall() {
   echo "no-noodles: removing installed files..."
   rm -f "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$HOOK_LIB_CONFIG" "$SKILL_FILE" "$SKILL_OPTIONS_FILE"
+  rm -f "$COMMAND_FILE" "$COMMAND_OPTIONS_FILE"
   rm -f "$HOOK_RISK_GATE" "$HOOK_LIB_RISK" "$HOOK_LIB_OBSERVE" "$HOOK_RISK_SCORE_PY" "$HOOK_RISK_RULES" "$HOOK_RISK_SUMMARY_PY" "$HOOK_GRANT_TRUST"
   # Deliberately NOT removing $CLAUDE_DIR/no-noodles/ (observations.jsonl,
   # risk-profile.json, session-trust) -- that's accumulated training data +
@@ -57,7 +77,7 @@ PYEOF
 
 [ "${1:-}" = "--uninstall" ] && uninstall
 
-mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills"
+mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/commands"
 
 cp "$PKG_DIR/hooks/no_noodle.sh" "$HOOK_NO_NOODLE"
 cp "$PKG_DIR/hooks/check_before_build.sh" "$HOOK_CHECK_BUILD"
@@ -71,6 +91,9 @@ cp "$PKG_DIR/hooks/risk_summary.py" "$HOOK_RISK_SUMMARY_PY"
 cp "$PKG_DIR/hooks/grant_session_trust.sh" "$HOOK_GRANT_TRUST"
 cp "$PKG_DIR/skills/no-noodle.md" "$SKILL_FILE"
 cp "$PKG_DIR/skills/noodle-options.md" "$SKILL_OPTIONS_FILE"
+# Same bytes, invocable location — one source of truth, two install paths.
+cp "$PKG_DIR/skills/no-noodle.md" "$COMMAND_FILE"
+cp "$PKG_DIR/skills/noodle-options.md" "$COMMAND_OPTIONS_FILE"
 chmod +x "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$HOOK_LIB_CONFIG" "$HOOK_RISK_GATE" "$HOOK_LIB_RISK" "$HOOK_LIB_OBSERVE" "$HOOK_GRANT_TRUST"
 echo "no-noodles: copied hooks + skills into $CLAUDE_DIR"
 

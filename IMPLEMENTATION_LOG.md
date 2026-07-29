@@ -14,6 +14,87 @@ landed and any deviations from that plan, not the plan itself.
 
 ---
 
+## 2026-07-15 — Phase 3: shadow scoring, observation log, session-trust grant, summary/promote
+
+**What landed:** `risk_score.py` extended with `apply_profile_adjustment()` (an optional 4th
+CLI arg, `profile.json`, wraps the existing 2-3-arg output unchanged — additive only) and
+`lib_risk.sh`'s new `risk_shadow_score` wrapper; `hooks/lib_observe.sh` (`risk_observe` — logs
+`{ts, command_signature (sha256, NOT the raw command), context, primary, shadow, outcome}` to
+`$CLAUDE_DIR/no-noodles/observations.jsonl`, rotated at a configurable line-count bound,
+wrapped fail-open in a subshell so nothing it does can ever fail the calling hook); one
+additive `risk_observe` line each in `no_noodle.sh` and `check_before_build.sh` (both existing
+rule test suites confirmed byte-for-byte unchanged — same pass count, same checks); `hooks/
+grant_session_trust.sh` (grant/revoke/status for the session-trust file risk_gate.sh's
+Danger/Critical tiers check for — without this Phase 3 piece those tiers would be permanently
+unreachable, the exact hard-lockout the plan's Decision section explicitly rejected);
+`hooks/risk_summary.py` (agreement-rate + outcome-mix + tier-distribution summary from
+observations.jsonl, plus `--promote <profile>` — the ONLY place `learning.mode` ever flips
+shadow-only -> live, always an explicit human-triggered action, never automatic).
+
+**Real scope decision, not fully specified in the plan**: the plan names `risk_maybe_retrain`
+and "learned weights" but never specifies the actual learning algorithm. Rather than invent an
+untested weight-computation scheme under time pressure — which would be exactly the kind of
+un-disciplined engineering the plan's own "shadow-only, human decides, never autonomous"
+philosophy argues against — this phase ships the full observation/summary/promote *mechanism*
+with an honest, documented default: `command_adjustments` defaults to an empty map (multiplier
+1.0 everywhere), so shadow == primary until someone deliberately writes a real adjustment into
+risk-profile.json. The actual weight-learning algorithm (how `command_adjustments` values get
+computed from accumulated observations) is real remaining scope, not silently implied done.
+
+**Real decision on data retention**: `install.sh --uninstall` was extended to remove the new
+hook files but was deliberately NOT extended to delete `$CLAUDE_DIR/no-noodles/` (observations.
+jsonl, risk-profile.json, session-trust) — that directory holds accumulated training data +
+audit trail per the plan, not disposable on/off-toggle state like the `.state` files uninstall
+already removes. Test added (`test_install.sh`) confirming this explicitly.
+
+**Deferred, explicitly out of scope this phase**: the actual `command_adjustments`
+weight-learning algorithm; risk_gate.sh's own decisions are not yet observation-logged (only
+rule 1/4 per the plan's stated Phase 3 scope — risk_gate.sh already computes both scores
+internally, so wiring it in later is a small addition, not a redesign); an MCP/dogfooder
+integration (Phase 4, not started — needs the dogfooder runner's actual internals read first,
+per the plan's own explicit caution against assuming that shape).
+
+---
+
+## 2026-07-15 — Phase 2: risk_gate.sh wired in, GuardFall bypass tests, OFF by default
+
+**What landed:** `hooks/risk_gate.sh` (new PreToolUse hook, tiered-confirmation gate per the
+plan's Decision section — Safe auto-allows, Caution needs `# risk-ok`, Danger needs marker +
+an active `$CLAUDE_DIR/no-noodles/session-trust` file, Critical needs marker + trust +
+`NO_NOODLES_RISK_CRITICAL_OVERRIDE=1`), wired into `install.sh` (copy/register/uninstall for
+risk_gate.sh + lib_risk.sh + risk_score.py + risk-rules.json), `hooks/lib_config.sh` extended
+with an optional 3rd `default` arg to `resolve_state` (existing 2-arg callers unchanged),
+`skills/noodle-options.md` updated, `tests/test_risk_gate.sh` (17 checks incl. GuardFall-class
+obfuscation: nested `bash -c`, `eval`-wrapped pipelines — scoring runs against the real command
+text, not defeated by a shell wrapper).
+
+**Real decision this session, confirmed with the user**: risk_gate.sh ships **off by default**
+(`resolve_state risk_scoring "$STATE" off`), unlike `no_ad_hoc_probes`/`check_before_build`
+(on by default). Rationale: this scores EVERY Bash command via a weighted model, a much
+broader surface than the other two rules' one narrow literal pattern each — an untested new
+rule at that surface area risked broadly blocking real work on day one. Opt in via
+`/noodle-options` or the same JSON config layer as every other rule.
+
+**Real bug found and fixed while writing tests**: `risk_gate.sh`'s first draft called
+`risk_score "$CMD"` with no target_path, so `dd if=/dev/zero of=/dev/disk4` never reached
+Critical tier (context multiplier defaulted to "project" instead of "root") — added a
+best-effort target-path extraction (`grep -oE` for the last path-like substring in the command,
+handling `of=/dev/x`-style embedded paths, not just leading tokens) so the gate actually sees
+what `lib_risk.sh`'s scoring model was designed to use.
+
+**Known limitation, not a bug**: `base64 -d` alone scores exactly 20 (risk-rules.json's
+Safe/Caution boundary) — too low on its own to trigger Caution. This is a Phase 1 seed-rule
+weighting question, out of scope for Phase 2 (wiring, not re-tuning weights); a GuardFall test
+originally written against this case was corrected to use a properly-demonstrative example
+(`eval`-wrapped `curl|bash`, which does score well above Safe) instead of asserting behavior
+the current weights don't support.
+
+**Deferred to Phase 3** (per the plan's own phasing, confirmed with the user before starting):
+the session-trust file's actual *creation* mechanism (risk_gate.sh only checks for its
+presence), risk_observe/risk_shadow_score, the observation log, and summary/promote tooling.
+
+---
+
 ## 2026-07-13 — Phase 1: static scoring engine, no learning, not wired in yet
 
 **What landed:** `hooks/risk-rules.json` (seed rule table), `hooks/risk_score.py`
@@ -72,3 +153,42 @@ strict improvement in expressiveness, not a scope change.
   first runs against real command shapes"), not an oversight. Phase 1 is a
   pure library with no hook wiring yet, so there's no real command shape to
   defend against — those tests land in Phase 2 alongside `risk_gate.sh`.
+
+## 2026-07-29 — install.sh: the skill docs were installed somewhere Claude Code never loads
+
+**What landed.** `install.sh` now also copies `no-noodle.md` and `noodle-options.md` into
+`$CLAUDE_DIR/commands/`, creates that directory, and removes both on `--uninstall`. The existing
+`$CLAUDE_DIR/skills/*.md` copies are untouched — this is purely additive, so anything reading the
+old layout keeps working.
+
+**The defect, found empirically.** A flat `.md` directly under `$CLAUDE_DIR/skills/` is written to
+disk but **not registered** by Claude Code: `/no-noodle` returned "Unknown skill" and neither doc
+appeared in the session's skill list, in *both* config dirs, for weeks. What does register at user
+level is `$CLAUDE_DIR/commands/<name>.md` — proven against `commands/drive-status.md`, which is
+invocable on this machine. Confirmed fixed in-session: after re-running the installer, both
+`no-noodle` and `noodle-options` appeared as loadable skills and `/no-noodle` returned its content.
+
+**Why it mattered more than a missing file usually would.** The two PreToolUse hooks were working
+correctly the entire time. So noodling was being *blocked* while the document explaining what to do
+instead was unreachable by the agent being corrected. Enforcement without the explanation is exactly
+how a discipline degrades into decoration — which is how the owner described it before we looked.
+
+The skill text has always said "run `/noodle-options`", so a command was the intended shape from the
+start; the installer simply wrote to an inert path.
+
+**Prior art applied.** None external — this was a format/layout mismatch established by differential
+observation on this machine (which paths register vs. which don't), not a design question.
+
+**Deviations.** None from any plan; this was an unplanned defect fix.
+
+**Open questions / known limitations.**
+- The `skills/<stem>/SKILL.md` *directory* form is proven for PROJECT-level skills
+  (`<repo>/.claude/skills/<name>/`) but **unverified at user level**. It is still listed as an
+  accepted shape by consumers of this package; do not treat it as proven without checking in a fresh
+  session.
+- Registration only refreshes at session start, so an installer run cannot self-verify invocability
+  within the same session — it can only verify the files landed.
+- A downstream checker (`projectMan/scripts/provision_session_skills.py`) had the mirror-image bug:
+  it accepted the flat `skills/*.md` as proof of presence, so it reported no-noodle installed for
+  weeks while no session could invoke it. Fixed there in the same sitting; that checker now requires
+  an invocable location and also provisions local Docker containers, not just remote ones.

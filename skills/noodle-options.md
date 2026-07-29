@@ -1,13 +1,20 @@
 ---
 name: noodle-options
-description: Configure no-noodles enforcement (rule 1 ad-hoc-probe blocking, rule 4 check-before-build) per-project or globally, per individual preference. Invoke as `/noodle-options`.
+description: Configure no-noodles enforcement (rule 1 ad-hoc-probe blocking, rule 4 check-before-build, the weighted risk gate) per-project or globally, per individual preference. Invoke as `/noodle-options`.
 ---
 
 # noodle-options
 
-Lets the user tune no-noodles enforcement instead of it being one global on/off switch. Two
-independent rules (`no_ad_hoc_probes`, `check_before_build`), two independent scopes (this
-project only, or the global default), on or off.
+Lets the user tune no-noodles enforcement instead of it being one global on/off switch. Three
+independent rules (`no_ad_hoc_probes`, `check_before_build`, `risk_scoring`), two independent
+scopes (this project only, or the global default), on or off.
+
+`risk_scoring` (docs/RISK_MODEL_PLAN.md) is a much broader surface than the other two rules —
+it scores EVERY Bash command via a weighted model instead of one narrow literal pattern, and
+defaults to **off** (the other two default on). Explain that difference if a user asks to turn
+it on: it enforces a tiered-confirmation gate (Safe auto-allows; Caution needs an inline
+`# risk-ok` marker; Danger needs that marker AND an active session-trust file; Critical needs
+marker + trust + a distinct env var) rather than a binary block.
 
 ## Resolution order (how the hooks actually decide, via `hooks/lib_config.sh`)
 
@@ -15,7 +22,7 @@ project only, or the global default), on or off.
 2. Global `$CLAUDE_CONFIG_DIR/no-noodles.json` (`~/.claude/no-noodles.json` by default).
 3. Legacy per-rule state file (`~/.claude/no-noodle.state`, `~/.claude/check-before-build.state`)
    — the original all-or-nothing toggle, still honored, never removed.
-4. Default: on.
+4. Default: on for `no_ad_hoc_probes`/`check_before_build`; **off** for `risk_scoring`.
 
 ## What to do when invoked
 

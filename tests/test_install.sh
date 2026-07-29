@@ -41,6 +41,23 @@ RC=$?
 [ -x "$FAKE_CLAUDE/hooks/grant_session_trust.sh" ]; check "grant_session_trust.sh installed and executable" $?
 [ -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc installed" $?
 [ -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill installed" $?
+
+# The docs must land where Claude Code can actually LOAD them, not merely on
+# disk. Found empirically 2026-07-29: a flat `.md` directly under
+# `$CLAUDE_DIR/skills/` is NOT registered — `/no-noodle` returned "Unknown
+# skill" and it was absent from the session's skill list, in both config dirs,
+# for weeks. What does register at user level on this machine is
+# `$CLAUDE_DIR/commands/<name>.md` (proven by `commands/drive-status.md`, which
+# is invocable). The skill text itself says "run /noodle-options", so a command
+# was always the intent — the installer just put it somewhere inert.
+#
+# This is the whole discipline being decoration: the enforcement hooks worked
+# fine, while the document explaining WHY they fire could not be opened by the
+# agent they were correcting.
+[ -f "$FAKE_CLAUDE/commands/no-noodle.md" ]; check "no-noodle installed as an INVOCABLE command (not just a skills/ file)" $?
+[ -f "$FAKE_CLAUDE/commands/noodle-options.md" ]; check "noodle-options installed as an INVOCABLE command" $?
+diff -q "$PKG_ROOT/skills/no-noodle.md" "$FAKE_CLAUDE/commands/no-noodle.md" >/dev/null 2>&1
+check "the command copy is byte-identical to the packaged doc (one source of truth)" $?
 [ -f "$FAKE_CLAUDE/settings.json" ]; check "settings.json created" $?
 
 python3 -c "
@@ -123,6 +140,8 @@ RC=$?
 [ -f "$FAKE_CLAUDE/no-noodles/observations.jsonl" ]; check "uninstall preserves accumulated observations.jsonl (not disposable state)" $?
 [ ! -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc removed" $?
 [ ! -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill removed" $?
+[ ! -f "$FAKE_CLAUDE/commands/no-noodle.md" ]; check "no-noodle command removed" $?
+[ ! -f "$FAKE_CLAUDE/commands/noodle-options.md" ]; check "noodle-options command removed" $?
 python3 -c "
 import json
 data = json.load(open('$FAKE_CLAUDE/settings.json'))

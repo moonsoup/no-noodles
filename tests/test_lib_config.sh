@@ -77,6 +77,27 @@ OUT="$(run_resolve my_rule)"
 [ "$OUT" = "on" ]; check "malformed project-local JSON: falls through without crashing" $?
 rm -f "$PROJECT_DIR/.no-noodles.json" "$CLAUDE_CONFIG_DIR/no-noodles.json"
 
+# --- optional 3rd arg overrides the hardcoded "on" default (existing 2-arg
+# callers are unaffected -- every test above this point already proved that) ---
+run_resolve_with_default() {
+	( cd "$PROJECT_DIR" && source "$LIB" && resolve_state "$1" "$LEGACY_STATE" "$2" )
+}
+OUT="$(run_resolve_with_default fresh_rule off)"
+[ "$OUT" = "off" ]; check "3rd-arg default 'off': nothing configured anywhere resolves off" $?
+OUT="$(run_resolve_with_default fresh_rule on)"
+[ "$OUT" = "on" ]; check "3rd-arg default 'on': explicit on behaves the same as the implicit default" $?
+
+# --- the optional default is still overridden by every higher-priority layer ---
+echo off > "$LEGACY_STATE"
+OUT="$(run_resolve_with_default fresh_rule on)"
+[ "$OUT" = "off" ]; check "3rd-arg default 'on': legacy .state file off still wins" $?
+rm -f "$LEGACY_STATE"
+
+echo '{"fresh_rule": "on"}' > "$CLAUDE_CONFIG_DIR/no-noodles.json"
+OUT="$(run_resolve_with_default fresh_rule off)"
+[ "$OUT" = "on" ]; check "3rd-arg default 'off': global JSON on still wins" $?
+rm -f "$CLAUDE_CONFIG_DIR/no-noodles.json"
+
 echo ""
 if [ "$FAILS" -eq 0 ]; then
 	echo "LIB_CONFIG TEST: ALL CHECKS PASSED."

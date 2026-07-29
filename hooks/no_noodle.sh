@@ -23,6 +23,11 @@ source "$HOOK_DIR/lib_config.sh"
 
 CMD=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
 
+# Phase 3 observation log (docs/RISK_MODEL_PLAN.md) -- logs every Bash command
+# this rule sees, for the learning loop's summary/promote tooling. Additive
+# only: never affects this rule's own on/off decision below, never blocks.
+( source "$HOOK_DIR/lib_observe.sh" && risk_observe "$CMD" ) >/dev/null 2>&1
+
 # Explicit override for the rare justified one-off.
 echo "$CMD" | grep -qE '# *noodle-ok' && exit 0
 
