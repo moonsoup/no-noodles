@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t">
+  <title id="t">no-noodles — a bowl of pasta struck through</title>
+  <rect width="512" height="512" fill="#DCE6E1"/>
+
+  <!-- steam: three tangles, deliberately not tidy -->
+  <g fill="none" stroke="#8FA3A0" stroke-width="7" stroke-linecap="round" opacity=".55">
+    <path d="M196 150c-18-22 14-34-4-56"/>
+    <path d="M256 136c-20-26 16-38-4-64"/>
+    <path d="M316 150c-18-22 14-34-4-56"/>
+  </g>
+
+  <!-- the tangle inside the bowl -->
+  <g fill="none" stroke="#E3B355" stroke-width="15" stroke-linecap="round">
+    <path d="M132 258c26-30 62 14 96-12s54 26 90 4 46 10 62-6"/>
+    <path d="M140 288c34 22 58-18 92 2s60-16 96 6 30-8 44-16"/>
+    <path d="M150 232c30 8 40-20 76-8s52-22 88-6 42 16 58 8"/>
+  </g>
+
+  <!-- bowl: a single confident vessel, flat foot -->
+  <path d="M104 262h304c0 84-68 148-152 148S104 346 104 262Z" fill="none" stroke="#0F2B2C" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M196 424h120" stroke="#0F2B2C" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- the red line through it -->
+  <path d="M92 404 420 172" stroke="#A8231B" stroke-width="30" stroke-linecap="round"/>
+</svg>
