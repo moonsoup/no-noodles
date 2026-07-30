@@ -227,3 +227,42 @@ suites pass. That is a stable, usable surface worth a 1.0 boundary.
 - Nothing yet *compares* the installed stamp against the package version — the stamp is written and
   removed correctly, but drift detection is left to the consumer (projectMan's
   `provision_session_skills.py` currently checks presence and invocability, not version).
+
+## 2026-07-30 — 1.0.1: rule 1 counts repeats, not shapes
+
+**What landed.** `no_noodle.sh` now allows the FIRST use of a guarded shape in a project and blocks
+the second. Counts are kept per (shape, project) under
+`$CLAUDE_CONFIG_DIR/no-noodles/shapes/`. The block message states how many times the shape has been
+seen and surfaces `# noodle-ok` at the moment it fires.
+
+**Why.** The rule's own criterion has always been repetition — *"if you're typing it twice, it's a
+script"* — but the hook enforced on shape, so a single exploratory research probe was taxed exactly
+as hard as the eighth repeat. The owner raised it directly: is this too restrictive to produce
+non-code output? The honest answer was that the axis is not code-vs-prose but *does the output make
+a claim about data*, and that the friction was real: in one session an agent ran eight ad-hoc `ssh`
+probes and routed around the guard rather than using its escape hatch. Frequency enforcement removes
+the tax on exploration while catching the exact failure the rule cares about, at the moment it
+occurs.
+
+**Evidence it works, including on its author.** While implementing this, the hook blocked three of my
+own commands — each contained guarded literals as *text* (writing tests and docs *about* the
+patterns). That is a real property worth stating: the hook matches command text, so writing about a
+pattern can trip it. `# noodle-ok` is the correct response and was used, which is also the first time
+this session the escape hatch got used as designed rather than routed around.
+
+**Deviations.** Three pre-existing test assertions expected the FIRST use to be blocked. They were
+updated, not deleted, with the reason recorded inline — a deliberate contract change, not a test
+weakened for green. The shapes are still caught; the block moved to the repeat.
+
+**Also fixed.** The hook tests were not hermetic: they wrote counts into the developer's real
+`CLAUDE_CONFIG_DIR`, so they passed or failed depending on what that person had run earlier. They now
+own a temp config dir.
+
+**Docs fact-checked against the code.** Three surfaces claimed the hook "blocks … outright" — the
+skill doc, the README (twice) and the landing page. All corrected. Every other page claim was
+verified against the source: the guarded regex, the `# build-ok: <reason>` marker, idempotent
+registration, and project-local-beats-global resolution all check out as written.
+
+**Open.** The text-matching property above means a command *mentioning* a guarded pattern is treated
+as using it. Acceptable today, and `# noodle-ok` covers it, but a future version could look at the
+parsed command rather than the raw string.

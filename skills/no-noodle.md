@@ -21,7 +21,10 @@ Two layers, both still supported:
 
 ## 1. No ad-hoc probes — write the script
 Before any Bash call, the STOP CHECK: *could this be a script?* If it touches data or is remotely repeatable → write `the-script` + `test_the_script` (test passes first), then run it. One-liners to probe a system or parse a response are waste.
-- The hook **blocks** `curl|wget → python/jq/node` and `base64 -d` outright. Don't route around it — write the script, or use a skill's documented command (e.g. `dogfooder-ops`).
+- The hook counts **repeats, not shapes** (v1.0.1). A first fetch-into-parser or blob decode is
+  exploration and passes; the *second* of that shape in the same project is blocked, because that
+  is the moment it became a script. Don't route around it — write the script, or use a skill's
+  documented command (e.g. `dogfooder-ops`).
 - A failed one-liner is **not** fixed by a better one-liner — that's still a probe, aimed better. Stop and reconsider the approach.
 - `# noodle-ok` on a command is the escape hatch for a *genuine* one-off only. If you're typing it twice, it's a script.
 

@@ -31,18 +31,41 @@ CMD=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).ge
 # Explicit override for the rare justified one-off.
 echo "$CMD" | grep -qE '# *noodle-ok' && exit 0
 
-REASON=""
+SHAPE=""
 # curl/wget piped into a parser = ad-hoc API/data probe.
 if echo "$CMD" | grep -qE '(curl|wget)[^|]*\|[[:space:]]*(python3?|jq|node|perl|ruby)\b'; then
+  SHAPE="fetch-pipe-parser"
   REASON="a curl/wget piped into a parser is an ad-hoc data probe"
 fi
 # base64 decode of a blob = ad-hoc data handling.
 if echo "$CMD" | grep -qE '\bbase64[[:space:]]+(-d|--decode|-D)\b'; then
+  SHAPE="base64-decode"
   REASON="base64 decode is ad-hoc data handling"
 fi
 
-if [ -n "$REASON" ]; then
-  echo "NO-NOODLE: $REASON. Write a script (with a test) and run that, or use a skill's documented command. For a genuine one-off append '# noodle-ok'. See ~/.claude/skills/no-noodle.md."
+[ -n "$SHAPE" ] || exit 0
+
+# FREQUENCY, not shape, is the criterion — and always was. The rule's own words:
+# "if you're typing it twice, it's a script." Blocking the FIRST use taxed genuine
+# exploration exactly as hard as sloppiness, which is the friction that made people
+# route around the guard instead of using it. A one-off research probe now passes; the
+# repeat is where it has become a script, and that is where the block lands.
+#
+# Counted per project (cwd) as well as per shape, so a probe used once in each of
+# several repos is not punished for the total.
+COUNT_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/no-noodles/shapes"
+mkdir -p "$COUNT_DIR" 2>/dev/null
+PROJECT_KEY=$(printf '%s' "${PWD:-unknown}" | tr -c 'a-zA-Z0-9' '_' | tail -c 60)
+COUNT_FILE="$COUNT_DIR/${SHAPE}__${PROJECT_KEY}"
+SEEN=0
+[ -f "$COUNT_FILE" ] && SEEN=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+case "$SEEN" in ''|*[!0-9]*) SEEN=0 ;; esac
+
+if [ "$SEEN" -ge 1 ]; then
+  echo "NO-NOODLE: $REASON, and I have seen this shape ($SHAPE) $SEEN time(s) already in this project. One is exploration; twice is a script. Write the script (with a test) and run that, or use a skill's documented command. If this genuinely is a distinct one-off, append '# noodle-ok'. See the no-noodle skill."
   exit 2
 fi
+
+# First use in this project: allow, and remember it.
+echo $((SEEN + 1)) > "$COUNT_FILE" 2>/dev/null
 exit 0

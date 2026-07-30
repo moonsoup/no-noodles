@@ -1,6 +1,6 @@
 # no-noodles
 
-**v1.0.0** — the version in `VERSION` is the single source of truth, and `install.sh` stamps it into each config dir at `$CLAUDE_CONFIG_DIR/no-noodles/VERSION` so you can tell which build a given host or container is actually running.
+**v1.0.1** — the version in `VERSION` is the single source of truth, and `install.sh` stamps it into each config dir at `$CLAUDE_CONFIG_DIR/no-noodles/VERSION` so you can tell which build a given host or container is actually running.
 
 Anti-noodle discipline for [Claude Code](https://claude.com/claude-code), enforced two ways: **hard** (PreToolUse hooks that mechanically block specific tool-call shapes) and **soft** (a skill doc for the parts that require judgment, not pattern-matching).
 
@@ -16,13 +16,18 @@ Four rules. Two of them are checkable from a single tool call's *shape* — thos
 
 | Rule | Enforcement | Why |
 |---|---|---|
-| **1. No ad-hoc probes** | Hard — `hooks/no_noodle.sh` | `curl\|wget` piped into a parser, or `base64 -d`, is unambiguous tool-shape: block it, make the case for a script instead. |
+| **1. No ad-hoc probes** | Hard — `hooks/no_noodle.sh` | A fetch piped into a parser, or a blob decode, is unambiguous tool-shape. The FIRST is exploration and passes; the second of that shape in the same project is blocked, because that is where it became a script. |
 | **2. Drive to done, don't hand back** | Soft — skill doc only | Detecting "handed back on a decision it could've made" requires reading the assistant's own closing text and knowing whether a stated blocker is real. Not a tool-call pattern; a hard block here would misfire on genuine "I'm stuck" moments. |
 | **3. One thread at a time** | Soft — skill doc only | "Is this a continuation or a tangent" needs the conversation's intent, not a single call in isolation. |
 | **4. Check before building** | Hard — `hooks/check_before_build.sh` | Creating a *new* script file under a `scripts/` directory is unambiguous tool-shape too: block it unless justified, make the case for extending an existing pipeline instead. |
 
 ### Rule 1 — `no_noodle.sh`
-Blocks (exit 2) any `Bash` tool call matching:
+Counts **repeats, not shapes** (v1.0.1). The first use of a guarded shape in a project passes —
+research probes shouldn't pay a tax, and blocking them is what made people route around the guard.
+The **second** use of that same shape is blocked (exit 2), because the rule's own criterion has
+always been repetition: *if you're typing it twice, it's a script.*
+
+Guarded shapes:
 - `curl` or `wget` piped into `python`/`python3`/`jq`/`node`/`perl`/`ruby`
 - `base64 -d` / `base64 --decode` / `base64 -D`
 

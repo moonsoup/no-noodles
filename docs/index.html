@@ -160,7 +160,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--enamel-deep);paddi
 <header class="top">
   <img src="logo.svg" alt="" width="34" height="34">
   <b>no-noodles</b>
-  <span class="ver">v1.0.0</span>
+  <span class="ver">v1.0.1</span>
   <a class="gh" href="https://github.com/moonsoup/no-noodles">github ↗</a>
 </header>
 
@@ -211,8 +211,9 @@ code{font-family:var(--mono);font-size:.88em;background:var(--enamel-deep);paddi
       carefully.</p>
       <p>Worse, that shape is indistinguishable from the real thing. A shell command that evaluates a
       fetch is what an attack chain looks like too, which is why endpoint security flags it.</p>
+      <p>So the guard counts <strong>repeats, not shapes</strong>. Your first probe of a kind passes — research shouldn't pay a tax. The second of the same shape is refused, because that is the moment it stopped being a one-off.</p>
       <div class="block">
-<span class="cm"># blocked — a probe wearing a fix's clothing</span>
+<span class="cm"># first one explores. the SECOND is where it became a script.</span>
 <span class="no">curl -s https://api/data | python3 -c "..."</span>
 <span class="no">base64 -d blob.txt &gt; out.csv</span>
 
@@ -250,7 +251,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--enamel-deep);paddi
       genuine blocker from a lazy handback, or a real tangent from a legitimate next step — so those
       stay documented discipline, and the package says so instead of pretending otherwise.</p>
       <ul class="rules">
-        <li><span class="n">01</span><span>No ad-hoc probes — write the script</span><span class="w hook">hook</span></li>
+        <li><span class="n">01</span><span>No ad-hoc probes — the second one is a script</span><span class="w hook">hook</span></li>
         <li><span class="n">02</span><span>Drive to done — don't hand back at a green check</span><span class="w">judgment</span></li>
         <li><span class="n">03</span><span>One thread — finish it before starting the next</span><span class="w">judgment</span></li>
         <li><span class="n">04</span><span>Check before building — extend, don't duplicate</span><span class="w hook">hook</span></li>
@@ -302,7 +303,7 @@ CLAUDE_CONFIG_DIR=~/.claude-work ./install.sh
   before <code>/no-noodle</code> resolves.</p>
   <div class="foot">
     <a href="https://github.com/moonsoup/no-noodles">Source</a>
-    <a href="https://github.com/moonsoup/no-noodles/releases/tag/v1.0.0">v1.0.0 release notes</a>
+    <a href="https://github.com/moonsoup/no-noodles/releases/tag/v1.0.1">v1.0.1 release notes</a>
     <a href="https://github.com/moonsoup/no-noodles/blob/main/IMPLEMENTATION_LOG.md">Implementation log</a>
     <span>MIT</span>
   </div>
