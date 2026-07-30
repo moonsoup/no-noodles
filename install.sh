@@ -12,6 +12,17 @@ CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 PKG_DIR="$(cd "$(dirname "$0")" && pwd)"
 SETTINGS="$CLAUDE_DIR/settings.json"
 
+# Single source of truth for the version, stamped into each config dir on install
+# so "which no-noodles is in there?" is answerable mechanically.
+#
+# Not cosmetic: before 1.0.0 there was no version marker at all, and this machine
+# was found running DIFFERENT builds of no-noodle.md in ~/.claude vs ~/.claude-ies
+# (3379 vs 4383 bytes) — noticed only because someone read an `ls -la` byte count
+# by eye. The package now also installs into Docker containers, local and remote,
+# so drift between installs is the normal case to detect, not an edge case.
+VERSION="$(cat "$PKG_DIR/VERSION" 2>/dev/null || echo "0.0.0-unknown")"
+VERSION_STAMP="$CLAUDE_DIR/no-noodles/VERSION"
+
 HOOK_NO_NOODLE="$CLAUDE_DIR/hooks/no_noodle.sh"
 HOOK_CHECK_BUILD="$CLAUDE_DIR/hooks/check_before_build.sh"
 HOOK_LIB_CONFIG="$CLAUDE_DIR/hooks/lib_config.sh"
@@ -48,6 +59,9 @@ uninstall() {
   echo "no-noodles: removing installed files..."
   rm -f "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$HOOK_LIB_CONFIG" "$SKILL_FILE" "$SKILL_OPTIONS_FILE"
   rm -f "$COMMAND_FILE" "$COMMAND_OPTIONS_FILE"
+  # The stamp describes what IS installed; leaving it would claim a package that
+  # is gone — the same false-presence trap that hid the unloadable skill.
+  rm -f "$VERSION_STAMP"
   rm -f "$HOOK_RISK_GATE" "$HOOK_LIB_RISK" "$HOOK_LIB_OBSERVE" "$HOOK_RISK_SCORE_PY" "$HOOK_RISK_RULES" "$HOOK_RISK_SUMMARY_PY" "$HOOK_GRANT_TRUST"
   # Deliberately NOT removing $CLAUDE_DIR/no-noodles/ (observations.jsonl,
   # risk-profile.json, session-trust) -- that's accumulated training data +
@@ -77,7 +91,8 @@ PYEOF
 
 [ "${1:-}" = "--uninstall" ] && uninstall
 
-mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/commands"
+mkdir -p "$CLAUDE_DIR/hooks" "$CLAUDE_DIR/skills" "$CLAUDE_DIR/commands" "$CLAUDE_DIR/no-noodles"
+printf '%s\n' "$VERSION" > "$VERSION_STAMP"
 
 cp "$PKG_DIR/hooks/no_noodle.sh" "$HOOK_NO_NOODLE"
 cp "$PKG_DIR/hooks/check_before_build.sh" "$HOOK_CHECK_BUILD"
@@ -95,7 +110,7 @@ cp "$PKG_DIR/skills/noodle-options.md" "$SKILL_OPTIONS_FILE"
 cp "$PKG_DIR/skills/no-noodle.md" "$COMMAND_FILE"
 cp "$PKG_DIR/skills/noodle-options.md" "$COMMAND_OPTIONS_FILE"
 chmod +x "$HOOK_NO_NOODLE" "$HOOK_CHECK_BUILD" "$HOOK_LIB_CONFIG" "$HOOK_RISK_GATE" "$HOOK_LIB_RISK" "$HOOK_LIB_OBSERVE" "$HOOK_GRANT_TRUST"
-echo "no-noodles: copied hooks + skills into $CLAUDE_DIR"
+echo "no-noodles $VERSION: copied hooks + skills + commands into $CLAUDE_DIR"
 
 if [ ! -f "$SETTINGS" ]; then
   echo '{"hooks":{"PreToolUse":[{"hooks":[]}]}}' > "$SETTINGS"

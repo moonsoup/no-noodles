@@ -54,6 +54,20 @@ RC=$?
 # This is the whole discipline being decoration: the enforcement hooks worked
 # fine, while the document explaining WHY they fire could not be opened by the
 # agent they were correcting.
+# --- version stamping ---
+# There was no version marker of any kind before 1.0.0: no VERSION file, no tags,
+# no releases. That is not a cosmetic gap — this session found ~/.claude and
+# ~/.claude-ies carrying DIFFERENT versions of no-noodle.md (3379 vs 4383 bytes),
+# and the only reason anyone noticed was an `ls -la` byte count read by eye. With
+# the package now installed onto containers as well as two host config dirs,
+# "which version is in there?" has to be answerable mechanically.
+[ -f "$PKG_ROOT/VERSION" ]; check "package declares a VERSION (single source of truth)" $?
+grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' "$PKG_ROOT/VERSION" 2>/dev/null
+check "VERSION is a bare semver line" $?
+[ -f "$FAKE_CLAUDE/no-noodles/VERSION" ]; check "installed version is stamped into the config dir" $?
+diff -q "$PKG_ROOT/VERSION" "$FAKE_CLAUDE/no-noodles/VERSION" >/dev/null 2>&1
+check "the stamp matches the package VERSION" $?
+
 [ -f "$FAKE_CLAUDE/commands/no-noodle.md" ]; check "no-noodle installed as an INVOCABLE command (not just a skills/ file)" $?
 [ -f "$FAKE_CLAUDE/commands/noodle-options.md" ]; check "noodle-options installed as an INVOCABLE command" $?
 diff -q "$PKG_ROOT/skills/no-noodle.md" "$FAKE_CLAUDE/commands/no-noodle.md" >/dev/null 2>&1
@@ -138,6 +152,10 @@ RC=$?
 [ ! -f "$FAKE_CLAUDE/hooks/risk_summary.py" ]; check "risk_summary.py removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/grant_session_trust.sh" ]; check "grant_session_trust.sh removed" $?
 [ -f "$FAKE_CLAUDE/no-noodles/observations.jsonl" ]; check "uninstall preserves accumulated observations.jsonl (not disposable state)" $?
+# The stamp describes what IS installed, so uninstalling must clear it — leaving a
+# version behind would claim the package is present when it isn't, which is the
+# same false-presence problem that hid the unloadable skill for weeks.
+[ ! -f "$FAKE_CLAUDE/no-noodles/VERSION" ]; check "uninstall removes the version stamp (it describes an install that no longer exists)" $?
 [ ! -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc removed" $?
 [ ! -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill removed" $?
 [ ! -f "$FAKE_CLAUDE/commands/no-noodle.md" ]; check "no-noodle command removed" $?

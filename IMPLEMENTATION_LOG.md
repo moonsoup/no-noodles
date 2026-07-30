@@ -192,3 +192,38 @@ observation on this machine (which paths register vs. which don't), not a design
   it accepted the flat `skills/*.md` as proof of presence, so it reported no-noodle installed for
   weeks while no session could invoke it. Fixed there in the same sitting; that checker now requires
   an invocable location and also provisions local Docker containers, not just remote ones.
+
+## 2026-07-29 — 1.0.0: the package now declares and stamps a version
+
+**What landed.** A `VERSION` file (single source of truth, bare semver), read by `install.sh` and
+stamped into each target at `$CLAUDE_CONFIG_DIR/no-noodles/VERSION`. The install summary now prints
+the version, `--uninstall` removes the stamp, and the README states it. Tagged `v1.0.0` with a GitHub
+release.
+
+**Why a version now, and why it isn't cosmetic.** There was no version marker of any kind before
+this: no `VERSION`, no tags, no releases. In the same sitting, this machine was found running two
+DIFFERENT builds of `no-noodle.md` — `~/.claude` had 3379 bytes, `~/.claude-ies` had 4383 — and the
+only reason anyone noticed was reading an `ls -la` byte count by eye. The package now installs onto
+Docker containers as well (local and remote, via projectMan's `provision_session_skills.py`), so
+drift between installs is the normal case to detect rather than an edge case. A stamp makes "which
+build is in there?" answerable mechanically, which is a precondition for the downstream checker
+verifying a *version* rather than mere presence.
+
+**Why 1.0.0 specifically.** The hard-enforcement core is in daily use and now genuinely reachable:
+both PreToolUse hooks wired and firing in two config dirs, and the skill docs invocable as of
+`ff16903` (they were installed to an inert path before). Uninstall is clean and tested. Nine test
+suites pass. That is a stable, usable surface worth a 1.0 boundary.
+
+**Prior art applied.** None external; conventional `VERSION`-file layout for a shell package.
+
+**Deviations.** None.
+
+**Open questions / known limitations (unchanged by this release, restated so 1.0 is not read as
+"finished").**
+- GuardFall-style shell-obfuscation bypasses (nested `$()`, encoding, whitespace tricks) are still
+  **not tested** — intentional per the risk model's own phasing, not an oversight.
+- The `skills/<stem>/SKILL.md` *directory* form remains unverified at user level; only
+  `commands/<name>.md` is proven invocable there.
+- Nothing yet *compares* the installed stamp against the package version — the stamp is written and
+  removed correctly, but drift detection is left to the consumer (projectMan's
+  `provision_session_skills.py` currently checks presence and invocability, not version).

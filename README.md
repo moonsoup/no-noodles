@@ -1,6 +1,10 @@
 # no-noodles
 
+**v1.0.0** — the version in `VERSION` is the single source of truth, and `install.sh` stamps it into each config dir at `$CLAUDE_CONFIG_DIR/no-noodles/VERSION` so you can tell which build a given host or container is actually running.
+
 Anti-noodle discipline for [Claude Code](https://claude.com/claude-code), enforced two ways: **hard** (PreToolUse hooks that mechanically block specific tool-call shapes) and **soft** (a skill doc for the parts that require judgment, not pattern-matching).
+
+> **Installing puts the docs in two places on purpose.** `$CLAUDE_CONFIG_DIR/commands/` is what makes `/no-noodle` and `/noodle-options` **invocable**; a flat `.md` under `skills/` lands on disk but is never loaded by Claude Code. Getting that wrong is not a small bug — it leaves the hooks blocking work while the document explaining what to do instead cannot be opened by the agent being corrected. See `IMPLEMENTATION_LOG.md` (2026-07-29).
 
 ## The problem
 
