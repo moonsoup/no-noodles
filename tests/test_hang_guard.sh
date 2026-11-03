@@ -29,7 +29,16 @@ bash -n "$HOOK"; check "hang_guard.sh has valid bash syntax" $?
 [ -f "$HERE/../hooks/hang_guard.py" ]; check "hang_guard.py exists" $?
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+# Probes are deliberately never killed by the guard (a real stuck one cannot
+# be); the test owns its fake ones and kills them via the guard's pidfiles.
+clear_probes() {
+	for f in "$CLAUDE_CONFIG_DIR"/no-noodles/probes/*.pid; do
+		[ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null
+		rm -f "$f"
+	done
+	return 0
+}
+trap 'clear_probes; rm -rf "$TMP"' EXIT
 export CLAUDE_CONFIG_DIR="$TMP/claude"
 mkdir -p "$CLAUDE_CONFIG_DIR"
 
@@ -145,6 +154,25 @@ ELAPSED=$(( $(date +%s) - START ))
 echo "$OUT" | grep -qi "not answering"; check "wedged-mount message says the mount is not answering" $?
 echo "$OUT" | grep -qF "fuse-mount-recovery"; check "wedged-mount message points at the recovery skill" $?
 [ "$ELAPSED" -le 6 ]; check "the hook itself never hangs on a wedged mount (${ELAPSED}s)" $?
+
+# At most ONE outstanding probe per mount. A probe stuck on a wedged FUSE mount
+# cannot be killed; probing again on every command would pile up unkillable
+# processes (what stalled the 2026-11-02 shutdown). While the earlier probe is
+# still alive, the mount is treated as wedged WITHOUT spawning another.
+clear_probes
+COUNTER="$TMP/probe-count"
+: > "$COUNTER"
+SPAWN="echo x >> $COUNTER; sleep 30"
+NO_NOODLES_HANG_PROBE_CMD="$SPAWN" NO_NOODLES_HANG_PROBE_SECS=1 run_hook "du -sh $MNT/carved" >/dev/null 2>&1
+START=$(date +%s)
+OUT="$(NO_NOODLES_HANG_PROBE_CMD="$SPAWN" NO_NOODLES_HANG_PROBE_SECS=1 run_hook "du -sh $MNT/carved" 2>&1)"
+RC=$?
+ELAPSED=$(( $(date +%s) - START ))
+[ "$RC" -eq 2 ]; check "a mount with a still-stuck probe is blocked" $?
+echo "$OUT" | grep -qi "still stuck"; check "message says the earlier probe is still stuck" $?
+[ "$(wc -l < "$COUNTER" | tr -d ' ')" = 1 ]; check "no second probe was spawned while the first is stuck" $?
+[ "$ELAPSED" -le 1 ]; check "the repeat decision is immediate (${ELAPSED}s)" $?
+clear_probes
 
 OUT="$(NO_NOODLES_HANG_PROBE_CMD="sleep 30" NO_NOODLES_HANG_PROBE_SECS=1 run_hook "du -sh $MNT/carved  # hang-ok: it is wedged and I know; collecting evidence" 2>&1)"
 [ "$?" -eq 0 ]; check "an explicit, reasoned override is still honoured on a wedged mount" $?

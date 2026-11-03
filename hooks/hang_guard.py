@@ -31,11 +31,11 @@ Test seams (environment):
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shlex
-import signal
 import subprocess
 import sys
 import time
@@ -248,6 +248,14 @@ def probe(mount: str, secs: float) -> tuple[bool, str]:
     """The guard's OWN liveness check. Never waits on a child it had to give up
     on: a process stuck on a wedged FUSE mount cannot be reaped, so it is
     abandoned in its own session rather than blocking this hook."""
+    pidfile = _pidfile(mount)
+    try:
+        old = int(open(pidfile).read().strip())
+    except (OSError, ValueError):
+        old = 0
+    if old and _alive(old):
+        return False, (f"an earlier probe of this mount (pid {old}) is still stuck; "
+                       "not starting another")
     custom = os.environ.get("NO_NOODLES_HANG_PROBE_CMD")
     if custom:
         argv = ["/bin/sh", "-c", custom.replace("{mount}", shlex.quote(mount))]
@@ -260,9 +268,18 @@ def probe(mount: str, secs: float) -> tuple[bool, str]:
                              text=True, start_new_session=True)
     except OSError as e:
         return False, f"probe could not start ({e})"
+    try:
+        with open(pidfile, "w") as f:
+            f.write(str(p.pid))
+    except OSError:
+        pass
     deadline = time.monotonic() + secs
     while time.monotonic() < deadline:
         if p.poll() is not None:
+            try:
+                os.unlink(pidfile)
+            except OSError:
+                pass
             out = (p.stdout.read() if p.stdout else "").split()
             if p.returncode != 0:
                 return False, f"probe failed (exit {p.returncode})"
@@ -275,11 +292,27 @@ def probe(mount: str, secs: float) -> tuple[bool, str]:
                 return True, f"{count}, {used / 1e9:,.1f} GB used on this filesystem"
             return True, "files in use: unknown (probe gave no statistics)"
         time.sleep(0.05)
-    try:
-        os.killpg(p.pid, signal.SIGKILL)
-    except OSError:
-        pass
+    # Deliberately NOT killed: a probe stuck on a wedged FUSE mount cannot be
+    # killed anyway, and its pidfile is what stops the next command from
+    # spawning another one. If it ever finishes, probing resumes.
     return False, f"no reply within {secs:g}s"
+
+
+def _pidfile(mount: str) -> str:
+    d = os.path.join(os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude"),
+                     "no-noodles", "probes")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, hashlib.sha1(mount.encode()).hexdigest() + ".pid")
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def decide(payload: dict, cwd: str, home: str) -> tuple[int, str]:
