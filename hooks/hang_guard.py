@@ -348,10 +348,11 @@ def decide(payload: dict, cwd: str, home: str) -> tuple[int, str]:
             return 2, (
                 f"HANG-GUARD: {m} is not answering ({info}). Anything that touches it now "
                 "can freeze in an unkillable wait -- this session, and any session sent to "
-                "look at it. Do not run this, in the foreground or the background. Check and "
-                "recover the mount first with the fuse-mount-recovery skill "
-                "(recover_fuse_ext2_mount.sh --check-only <mountpoint>). If you must proceed "
-                "anyway, append '# hang-ok: <why>'."
+                "look at it. Do not run this, in the foreground or the background, and do not "
+                "probe the mount yourself (no ls/stat/df on it). Diagnose from outside the "
+                "mount only -- the daemon's state (pgrep -fl fuse-ext2; ps -o state on its "
+                "pid) and `mount` -- then recover with the fuse-mount-recovery skill. If you "
+                "must proceed anyway, append '# hang-ok: <why>'."
             )
         report.append(f"  {m}: {info}")
 
