@@ -58,5 +58,5 @@ esac
 
 echo "$CONTENT" | grep -qE '(#|//) *build-ok:' && exit 0
 
-echo "CHECK-BEFORE-BUILD: new script $FILE_PATH — before creating it, confirm no existing script in this scripts/ dir already covers this (or could grow a flag/option to cover it). If this is genuinely a new, unrelated capability, add a first-line comment '# build-ok: <why this isn't an extension of an existing script>' and retry. See ~/.claude/skills/no-noodle.md rule 4."
+echo "CHECK-BEFORE-BUILD: new script $FILE_PATH — before creating it, confirm no existing script in this scripts/ dir already covers this (or could grow a flag/option to cover it). If this is genuinely a new, unrelated capability, add a first-line comment '# build-ok: <why this isn't an extension of an existing script>' and retry. See ~/.claude/skills/no-noodle.md rule 4." >&2
 exit 2

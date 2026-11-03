@@ -43,6 +43,19 @@ if echo "$CMD" | grep -qE '\bbase64[[:space:]]+(-d|--decode|-D)\b'; then
   REASON="base64 decode is ad-hoc data handling"
 fi
 
+# A hand-typed chain of several commands = an ad-hoc multi-step probe (2026-11-03:
+# a six-command one-off walked a fuse-ext2 mount and froze every session; neither
+# shape above matched it). Own config key, default on, so it can be switched
+# independently of the original two shapes. A pipeline counts once.
+if [ -z "$SHAPE" ] && [ "$(resolve_state compound_probes "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/compound-probes.state")" = "on" ]; then
+  NCMD=$(printf '%s' "$CMD" | python3 -c "import sys; sys.path.insert(0, sys.argv[1]); from hang_guard import count_commands; print(count_commands(sys.stdin.read()))" "$HOOK_DIR" 2>/dev/null)
+  case "$NCMD" in ''|*[!0-9]*) NCMD=0 ;; esac
+  if [ "$NCMD" -ge "${NO_NOODLES_COMPOUND_MIN:-4}" ]; then
+    SHAPE="compound-probe"
+    REASON="a one-off line chaining $NCMD commands is an ad-hoc multi-step probe"
+  fi
+fi
+
 [ -n "$SHAPE" ] || exit 0
 
 # FREQUENCY, not shape, is the criterion — and always was. The rule's own words:
@@ -62,7 +75,7 @@ SEEN=0
 case "$SEEN" in ''|*[!0-9]*) SEEN=0 ;; esac
 
 if [ "$SEEN" -ge 1 ]; then
-  echo "NO-NOODLE: $REASON, and I have seen this shape ($SHAPE) $SEEN time(s) already in this project. One is exploration; twice is a script. Write the script (with a test) and run that, or use a skill's documented command. If this genuinely is a distinct one-off, append '# noodle-ok'. See the no-noodle skill."
+  echo "NO-NOODLE: $REASON, and I have seen this shape ($SHAPE) $SEEN time(s) already in this project. One is exploration; twice is a script. Write the script (with a test) and run that, or use a skill's documented command. If this genuinely is a distinct one-off, append '# noodle-ok'. See the no-noodle skill." >&2
   exit 2
 fi
 

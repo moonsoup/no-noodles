@@ -39,6 +39,8 @@ RC=$?
 [ -f "$FAKE_CLAUDE/hooks/risk-rules.json" ]; check "risk-rules.json installed" $?
 [ -f "$FAKE_CLAUDE/hooks/risk_summary.py" ]; check "risk_summary.py installed" $?
 [ -x "$FAKE_CLAUDE/hooks/grant_session_trust.sh" ]; check "grant_session_trust.sh installed and executable" $?
+[ -x "$FAKE_CLAUDE/hooks/hang_guard.sh" ]; check "hang_guard.sh installed and executable" $?
+[ -f "$FAKE_CLAUDE/hooks/hang_guard.py" ]; check "hang_guard.py installed" $?
 [ -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc installed" $?
 [ -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill installed" $?
 
@@ -81,6 +83,7 @@ cmds = [h.get('command','') for g in data['hooks']['PreToolUse'] for h in g.get(
 assert any('no_noodle.sh' in c for c in cmds), 'no_noodle.sh not registered'
 assert any('check_before_build.sh' in c for c in cmds), 'check_before_build.sh not registered'
 assert any('risk_gate.sh' in c for c in cmds), 'risk_gate.sh not registered'
+assert any('hang_guard.sh' in c for c in cmds), 'hang_guard.sh not registered'
 "
 [ "$?" -eq 0 ]; check "all three hooks registered in settings.json" $?
 
@@ -104,6 +107,7 @@ cmds = [h.get('command','') for g in data['hooks']['PreToolUse'] for h in g.get(
 assert any(c == 'bash $FAKE_CLAUDE3/hooks/no_noodle.sh' for c in cmds), f'no_noodle.sh command does not use resolved CLAUDE_CONFIG_DIR: {cmds}'
 assert any(c == 'bash $FAKE_CLAUDE3/hooks/check_before_build.sh' for c in cmds), f'check_before_build.sh command does not use resolved CLAUDE_CONFIG_DIR: {cmds}'
 assert any(c == 'bash $FAKE_CLAUDE3/hooks/risk_gate.sh' for c in cmds), f'risk_gate.sh command does not use resolved CLAUDE_CONFIG_DIR: {cmds}'
+assert any(c == 'bash $FAKE_CLAUDE3/hooks/hang_guard.sh' for c in cmds), f'hang_guard.sh command does not use resolved CLAUDE_CONFIG_DIR: {cmds}'
 "
 [ "$?" -eq 0 ]; check "hook commands use the resolved CLAUDE_CONFIG_DIR, not a hardcoded ~/.claude" $?
 
@@ -145,6 +149,8 @@ RC=$?
 [ ! -f "$FAKE_CLAUDE/hooks/check_before_build.sh" ]; check "check_before_build.sh removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/lib_config.sh" ]; check "lib_config.sh removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/risk_gate.sh" ]; check "risk_gate.sh removed" $?
+[ ! -f "$FAKE_CLAUDE/hooks/hang_guard.sh" ]; check "hang_guard.sh removed" $?
+[ ! -f "$FAKE_CLAUDE/hooks/hang_guard.py" ]; check "hang_guard.py removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/lib_risk.sh" ]; check "lib_risk.sh removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/lib_observe.sh" ]; check "lib_observe.sh removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/risk_score.py" ]; check "risk_score.py removed" $?

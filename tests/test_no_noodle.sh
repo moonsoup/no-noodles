@@ -31,8 +31,7 @@ cleanup() {
 		rm -f "$STATE"
 	fi
 }
-trap cleanup EXIT
-trap 'rm -rf "$HOOK_HOME"' EXIT
+trap 'cleanup; rm -rf "$HOOK_HOME"' EXIT
 rm -f "$STATE"  # ensure default (on) for the tests below
 
 # Hermetic: the frequency guard keeps per-shape counts under CLAUDE_CONFIG_DIR, so
@@ -95,13 +94,6 @@ run_hook "Bash" "curl -s https://api.example.com | python3" >/dev/null 2>&1
 [ "$?" -eq 0 ]; check "toggled off: no longer blocks" $?
 rm -f "$STATE"
 
-echo ""
-if [ "$FAILS" -eq 0 ]; then
-	echo "NO_NOODLE TEST: ALL CHECKS PASSED."
-else
-	echo "NO_NOODLE TEST: $FAILS CHECK(S) FAILED." >&2
-	exit 1
-fi
 
 # --- research probes: repetition is the criterion, not shape -----------------
 #
@@ -169,3 +161,75 @@ check "differing arguments do not disguise the same shape" $?
 rm -rf "$NORM_HOME"
 
 rm -rf "$PROBE_HOME"
+
+# --- compound probes (2026-11-03) --------------------------------------------
+#
+# Motivating incident: a single one-off line chaining six commands (cat, tail,
+# ls, find|sed|sort|uniq, du) walked a fuse-ext2 mount and froze every session.
+# None of the guarded shapes matched, so nothing questioned it -- yet a hand-typed
+# multi-command probe is exactly what the rule means by "this should be a script".
+# Counted per project like every other shape: the first passes, a repeat blocks.
+COMP_HOME="$(mktemp -d)"
+comp_hook() {
+	python3 -c "import json,sys; print(json.dumps({'tool_name':'Bash','tool_input':{'command': sys.argv[1]}}))" \
+		"$1" | CLAUDE_CONFIG_DIR="$COMP_HOME" bash "$HOOK"
+}
+
+comp_hook "git status; git diff --stat; git log -1" >/dev/null 2>&1
+comp_hook "git status; git diff --stat; git log -1" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "three commands is below the compound threshold, even repeated" $?
+
+comp_hook "find . -type f | sed 's/.*\\.//' | sort | uniq -c | sort -rn | head" >/dev/null 2>&1
+comp_hook "find . -type f | sed 's/.*\\.//' | sort | uniq -c | sort -rn | head" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "one long pipeline is ONE command, not a compound probe" $?
+
+comp_hook "echo a; echo ---; cd /tmp && X=1; echo b; printf c" >/dev/null 2>&1
+comp_hook "echo a; echo ---; cd /tmp && X=1; echo b; printf c" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "separators, cd and assignments are not counted as commands" $?
+
+HEREDOC="python3 - <<'PY'
+a = 1
+b = 2
+c = 3
+d = 4
+PY"
+comp_hook "$HEREDOC" >/dev/null 2>&1
+comp_hook "$HEREDOC" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "heredoc body lines are not counted as commands" $?
+
+INCIDENT="cat /x/out | tail -3; C=/m/carved; tail -25 \$C/photorec.log | grep -v x; ls \$C; find \$C -type f | sort | uniq -c; du -sh \$C"
+comp_hook "$INCIDENT" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "FIRST compound probe in a project passes (exploration)" $?
+
+OUT="$(comp_hook "date; uptime; ls /a; ls /b; df -h" 2>&1)"
+RC=$?
+[ "$RC" -eq 2 ]; check "a REPEAT compound probe is blocked" $?
+echo "$OUT" | grep -qF "compound-probe"; check "block message names the compound-probe shape" $?
+
+ERR="$(comp_hook "date; uptime; ls /a; ls /b; df -h" 2>&1 >/dev/null)"
+echo "$ERR" | grep -qF "NO-NOODLE"; check "block message goes to stderr (the agent sees it)" $?
+
+MULTI='python3 -c "
+import json
+x = 1
+y = 2
+print(x, y)
+" | grep 1'
+comp_hook "$MULTI" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "newlines inside a quoted argument are not command separators" $?
+
+comp_hook "date; uptime; ls /a; ls /b; df -h  # noodle-ok" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "# noodle-ok escapes a compound probe" $?
+
+echo '{"compound_probes": "off"}' > "$COMP_HOME/no-noodles.json"
+comp_hook "date; uptime; ls /a; ls /b; df -h" >/dev/null 2>&1
+[ "$?" -eq 0 ]; check "compound_probes off: no longer blocks" $?
+rm -rf "$COMP_HOME"
+
+echo ""
+if [ "$FAILS" -eq 0 ]; then
+	echo "NO_NOODLE TEST: ALL CHECKS PASSED."
+else
+	echo "NO_NOODLE TEST: $FAILS CHECK(S) FAILED." >&2
+	exit 1
+fi

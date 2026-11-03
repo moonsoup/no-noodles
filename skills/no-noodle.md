@@ -5,7 +5,7 @@ description: The anti-noodle discipline — no ad-hoc probes, no tangents, no ha
 
 # No-noodle
 
-**Noodling = improvised, meandering work: ad-hoc terminal probes, side-quest tangents, and handing the turn back the moment something goes green.** It feels productive and isn't. Four rules; hooks enforce the structural slice of #1 and #4, the rest are on you.
+**Noodling = improvised, meandering work: ad-hoc terminal probes, side-quest tangents, and handing the turn back the moment something goes green.** It feels productive and isn't. Five rules; hooks enforce the structural slice of #1, #4 and #5, the rest are on you.
 
 ## Switching it
 Two layers, both still supported:
@@ -27,6 +27,10 @@ Before any Bash call, the STOP CHECK: *could this be a script?* If it touches da
   documented command (e.g. `dogfooder-ops`).
 - A failed one-liner is **not** fixed by a better one-liner — that's still a probe, aimed better. Stop and reconsider the approach.
 - `# noodle-ok` on a command is the escape hatch for a *genuine* one-off only. If you're typing it twice, it's a script.
+- **Compound probes count too (v1.1.0).** A one-off line chaining 4+ real commands (`;` `&&` `||`
+  newline; a pipeline counts once; `echo`/`cd`/assignments don't count) is a multi-step probe —
+  the shape that walked a FUSE mount and froze every session on 2026-11-02. Same repeat rule:
+  the first passes, the repeat blocks. Own key: `compound_probes`.
 
 ## 2. Drive to done — don't hand back
 Do not end a turn on a decision you can make. **Recommendations replace questions.** Stop only when (a) every acceptance criterion + quality check is green, or (b) you are *genuinely* blocked and can name the exact blocker (wall-clock/compute/external permission). "Want me to continue / do X or Y?" at a green check is a noodle. Keep going.
@@ -37,6 +41,25 @@ Finish the current task before starting a related-but-different one. A tangent t
 ## 4. Check before building
 New capability belongs *inside* the existing pipeline it's part of — as a flag or function on an existing script — not as a parallel one-off file. Search for an existing script/skill/command that already does it (or can be extended) before writing anything new. A genuinely new, unrelated set of functions can get its own file, but ask first.
 - The hook **blocks** creating a new script-like file under a `scripts/` directory without a `# build-ok: <reason>` marker justifying it. Don't route around it by adding the marker reflexively — actually check for an existing script to extend first; the marker is for when that check comes up empty.
+
+## 5. Size it before you run it — the hang guard
+When no script, skill, tool or MCP covers what you need and you must run a one-off command,
+**check it for safety first**. Ask, before it runs:
+- **Where does it run?** A FUSE mount (DockProjects), a network share, or `/Volumes` media
+  (an iPod, an SD card) can hang. A wedged mount puts every process that touches it into an
+  unkillable wait — including each session you send to look at it.
+- **How much does it touch?** `find`, `du`, `ls -R`, `rsync`, `grep -r` walk the whole tree.
+  Read the one file you need (a log, a manifest) instead when you can.
+- **How long will it take?** Estimate it. Then give it that time — run it in the background
+  if it is long. **Never cut a command short to be safe**: an arbitrary timeout just turns a
+  slow job into a failed one, and you cannot know in advance what some jobs need.
+- **Can it destroy anything?** That is what `risk_scoring` scores (off by default).
+
+The hook (`hooks/hang_guard.sh`, key `hang_guard`, on by default) enforces the first three
+for tree walks on hang-prone mounts: it probes the mount (blocking outright if it doesn't
+answer), reports the filesystem's scale, and passes the command only when it runs with
+`run_in_background` or carries a stated estimate: `# hang-ok: <size, expected time, why>`.
+A bare `# hang-ok` is still blocked; a `timeout` prefix does not satisfy it.
 
 ## When you catch yourself noodling
 Name it, drop the riff, and return to the plan's next concrete step. If there's no plan, that's the tell — make one, then execute it.

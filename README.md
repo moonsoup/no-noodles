@@ -1,6 +1,6 @@
 # no-noodles
 
-**v1.0.1** — the version in `VERSION` is the single source of truth, and `install.sh` stamps it into each config dir at `$CLAUDE_CONFIG_DIR/no-noodles/VERSION` so you can tell which build a given host or container is actually running.
+**v1.1.0** — the version in `VERSION` is the single source of truth, and `install.sh` stamps it into each config dir at `$CLAUDE_CONFIG_DIR/no-noodles/VERSION` so you can tell which build a given host or container is actually running.
 
 Anti-noodle discipline for [Claude Code](https://claude.com/claude-code), enforced two ways: **hard** (PreToolUse hooks that mechanically block specific tool-call shapes) and **soft** (a skill doc for the parts that require judgment, not pattern-matching).
 
@@ -19,6 +19,7 @@ Four rules. Two of them are checkable from a single tool call's *shape* — thos
 | **1. No ad-hoc probes** | Hard — `hooks/no_noodle.sh` | A fetch piped into a parser, or a blob decode, is unambiguous tool-shape. The FIRST is exploration and passes; the second of that shape in the same project is blocked, because that is where it became a script. |
 | **2. Drive to done, don't hand back** | Soft — skill doc only | Detecting "handed back on a decision it could've made" requires reading the assistant's own closing text and knowing whether a stated blocker is real. Not a tool-call pattern; a hard block here would misfire on genuine "I'm stuck" moments. |
 | **3. One thread at a time** | Soft — skill doc only | "Is this a continuation or a tangent" needs the conversation's intent, not a single call in isolation. |
+| **5. Size it before you run it** | Hard — `hooks/hang_guard.sh` | A tree walk (`find`, `du`, `ls -R`, `rsync`, ...) on a FUSE / network / `/Volumes` mount is unambiguous tool-shape plus a live mount-table fact. Probes the mount; requires background or a stated estimate. Never shortens a command. |
 | **4. Check before building** | Hard — `hooks/check_before_build.sh` | Creating a *new* script file under a `scripts/` directory is unambiguous tool-shape too: block it unless justified, make the case for extending an existing pipeline instead. |
 
 ### Rule 1 — `no_noodle.sh`
@@ -31,7 +32,30 @@ Guarded shapes:
 - `curl` or `wget` piped into `python`/`python3`/`jq`/`node`/`perl`/`ruby`
 - `base64 -d` / `base64 --decode` / `base64 -D`
 
+- **compound probe** (v1.1.0): a one-off line chaining 4+ real commands — a pipeline counts
+  once; `echo`, `cd` and assignments don't count. Own key `compound_probes`.
+
 Escape hatch for a genuinely justified one-off: append `# noodle-ok` to the command.
+
+### Rule 5 — `hang_guard.sh`
+Motivated by a real incident (2026-11-02): a six-command one-off ran `find | sort | uniq -c` and
+`du -sh` over thousands of carved files on a fuse-ext2 mount. The mount wedged, the session froze,
+every session sent to inspect it froze too, and the shutdown stalled. No rule looked at *where*
+a command walks.
+
+For a Bash command that walks a tree on a hang-prone mount (read from the kernel mount table —
+FUSE, NFS/SMB/AFP/WebDAV/sshfs, FAT/exFAT/NTFS removable media, anything under `/Volumes`):
+
+1. It probes the mount itself (bounded, abandoning a stuck child rather than waiting on it).
+   **No answer → blocked**, background or not, pointing at the `fuse-mount-recovery` skill.
+2. Healthy → the block message reports the filesystem's scale (files and bytes in use), and
+   the command passes when it runs with `run_in_background`, or carries a stated estimate:
+   `# hang-ok: <size, expected time, why>`.
+
+It deliberately **never asks for a timeout** and a `timeout` prefix does not satisfy it: you
+cannot know in advance what some jobs need, and cutting one short turns slow into failed. Size
+it, then give it the time. Reading a single named file, a plain `ls`, and invoking a script are
+never blocked.
 
 ### Rule 4 — `check_before_build.sh`
 Blocks (exit 2) any `Write` tool call that **creates** (not overwrites) a script-like file (`.py .sh .js .ts .rb`) inside a `scripts/` directory. New capability is presumed to belong *inside* whatever existing script already does the adjacent work — as a new flag or function — not as a parallel one-off file sitting next to it.

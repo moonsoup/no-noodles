@@ -73,17 +73,17 @@ HAS_CRITICAL_ENV=1
 case "$TIER" in
   Caution)
     if [ "$HAS_MARKER" -eq 0 ]; then exit 0; fi
-    echo "RISK-GATE: Caution/YELLOW (score $SCORE) — $REASON. Append '# risk-ok' to confirm, or fix the underlying issue. See docs/RISK_MODEL_PLAN.md."
+    echo "RISK-GATE: Caution/YELLOW (score $SCORE) — $REASON. Append '# risk-ok' to confirm, or fix the underlying issue. See docs/RISK_MODEL_PLAN.md." >&2
     exit 2
     ;;
   Danger)
     if [ "$HAS_MARKER" -eq 0 ] && [ "$HAS_TRUST" -eq 0 ]; then exit 0; fi
-    echo "RISK-GATE: Danger/ORANGE (score $SCORE) — $REASON. Needs BOTH '# risk-ok' AND an active session-trust file ($SESSION_TRUST). See docs/RISK_MODEL_PLAN.md."
+    echo "RISK-GATE: Danger/ORANGE (score $SCORE) — $REASON. Needs BOTH '# risk-ok' AND an active session-trust file ($SESSION_TRUST). See docs/RISK_MODEL_PLAN.md." >&2
     exit 2
     ;;
   Critical)
     if [ "$HAS_MARKER" -eq 0 ] && [ "$HAS_TRUST" -eq 0 ] && [ "$HAS_CRITICAL_ENV" -eq 0 ]; then exit 0; fi
-    echo "RISK-GATE: Critical/RED (score $SCORE) — $REASON. Needs '# risk-ok' AND session-trust AND NO_NOODLES_RISK_CRITICAL_OVERRIDE=1. See docs/RISK_MODEL_PLAN.md."
+    echo "RISK-GATE: Critical/RED (score $SCORE) — $REASON. Needs '# risk-ok' AND session-trust AND NO_NOODLES_RISK_CRITICAL_OVERRIDE=1. See docs/RISK_MODEL_PLAN.md." >&2
     exit 2
     ;;
 esac
