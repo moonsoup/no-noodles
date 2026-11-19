@@ -41,6 +41,17 @@ Finish the current task before starting a related-but-different one. A tangent t
 ## 4. Check before building
 New capability belongs *inside* the existing pipeline it's part of — as a flag or function on an existing script — not as a parallel one-off file. Search for an existing script/skill/command that already does it (or can be extended) before writing anything new. A genuinely new, unrelated set of functions can get its own file, but ask first.
 - The hook **blocks** creating a new script-like file under a `scripts/` directory without a `# build-ok: <reason>` marker justifying it. Don't route around it by adding the marker reflexively — actually check for an existing script to extend first; the marker is for when that check comes up empty.
+- **Placement is part of the check (v1.2.0).** "Nothing similar here" is half the question;
+  the other half is *is here the right place?* A tool for operations in general does not belong
+  in whichever project repo is nearest. Where a `tool_homes` entry applies (configured in
+  `no-noodles.json`, see `/noodle-options`), the marker must say which:
+  - `# build-ok: home=ops <reason>` — only accepted inside that tool home, and register the
+    tool in the home's script registry (the block message names both).
+  - `# build-ok: home=project consumer=<what uses it> <reason>` — stays in the project; name
+    the one project-specific thing that uses it.
+  Moving a script into a `scripts/` dir with `mv`/`cp`/`install`/`ln`/`git mv` gets the same
+  check — it's creating the file there. Real incident 2026-11-19: four operations tools with
+  valid bare markers landed in three different project repos.
 
 ## 5. Size it before you run it — the hang guard
 When no script, skill, tool or MCP covers what you need and you must run a one-off command,

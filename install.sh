@@ -35,6 +35,7 @@ HOOK_RISK_SUMMARY_PY="$CLAUDE_DIR/hooks/risk_summary.py"
 HOOK_GRANT_TRUST="$CLAUDE_DIR/hooks/grant_session_trust.sh"
 HOOK_HANG_GUARD="$CLAUDE_DIR/hooks/hang_guard.sh"
 HOOK_HANG_GUARD_PY="$CLAUDE_DIR/hooks/hang_guard.py"
+HOOK_TOOL_HOME_PY="$CLAUDE_DIR/hooks/tool_home.py"
 SKILL_FILE="$CLAUDE_DIR/skills/no-noodle.md"
 SKILL_OPTIONS_FILE="$CLAUDE_DIR/skills/noodle-options.md"
 # ALSO install as commands, because a flat `.md` under skills/ is NOT loaded.
@@ -65,7 +66,7 @@ uninstall() {
   # is gone — the same false-presence trap that hid the unloadable skill.
   rm -f "$VERSION_STAMP"
   rm -f "$HOOK_RISK_GATE" "$HOOK_LIB_RISK" "$HOOK_LIB_OBSERVE" "$HOOK_RISK_SCORE_PY" "$HOOK_RISK_RULES" "$HOOK_RISK_SUMMARY_PY" "$HOOK_GRANT_TRUST"
-  rm -f "$HOOK_HANG_GUARD" "$HOOK_HANG_GUARD_PY"
+  rm -f "$HOOK_HANG_GUARD" "$HOOK_HANG_GUARD_PY" "$HOOK_TOOL_HOME_PY"
   # Deliberately NOT removing $CLAUDE_DIR/no-noodles/ (observations.jsonl,
   # risk-profile.json, session-trust) -- that's accumulated training data +
   # audit trail (per the plan), not disposable state like the .state toggles
@@ -110,6 +111,7 @@ cp "$PKG_DIR/hooks/risk_summary.py" "$HOOK_RISK_SUMMARY_PY"
 cp "$PKG_DIR/hooks/grant_session_trust.sh" "$HOOK_GRANT_TRUST"
 cp "$PKG_DIR/hooks/hang_guard.sh" "$HOOK_HANG_GUARD"
 cp "$PKG_DIR/hooks/hang_guard.py" "$HOOK_HANG_GUARD_PY"
+cp "$PKG_DIR/hooks/tool_home.py" "$HOOK_TOOL_HOME_PY"
 cp "$PKG_DIR/skills/no-noodle.md" "$SKILL_FILE"
 cp "$PKG_DIR/skills/noodle-options.md" "$SKILL_OPTIONS_FILE"
 # Same bytes, invocable location — one source of truth, two install paths.

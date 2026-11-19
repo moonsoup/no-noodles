@@ -49,6 +49,21 @@ marker + trust + a distinct env var) rather than a binary block.
    project-local always wins over global if both are set — so a global "off" won't silently
    un-suppress a project that explicitly turned a rule back on locally, or vice versa.
 
+## Tool homes (`tool_homes`, placement half of rule #4)
+
+A list, not an on/off key. Each entry says "for files under `applies_to`, operations tools
+live in `path` (scope `scope`), registered in `registry`". Project entries come first, then
+global ones; the first entry whose `applies_to` contains the new file wins. Read-modify-write
+it like any other key (keep existing entries):
+```json
+{ "tool_homes": [ { "applies_to": "~/work/IronEggShell",
+                    "path": "~/work/IronEggShell/ironeggshell_ai_ops/scripts/approved",
+                    "scope": "ops",
+                    "registry": "~/work/IronEggShell/ironeggshell_ai_ops/script_registry/registry.yaml" } ] }
+```
+Where no entry applies, the original bare `# build-ok: <reason>` marker still passes. Turning
+`check_before_build` off also turns placement off (same hook).
+
 ## Notes
 
 - This only ever writes JSON config files — never touches the legacy `.state` files. A user who

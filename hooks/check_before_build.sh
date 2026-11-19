@@ -13,7 +13,10 @@
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_name',''))" 2>/dev/null)
-[ "$TOOL" = "Write" ] || exit 0
+# Write = creating a file. Bash is checked only for mv/cp/install/ln INTO a scripts/
+# dir (v1.2.0): moving a script in is the same as creating it there, and used to
+# bypass this rule entirely.
+case "$TOOL" in Write|Bash) ;; *) exit 0 ;; esac
 
 # ADJUSTABLE / SWITCHABLE, same convention as no_noodle.sh:
 #   off:  echo off > ~/.claude/check-before-build.state
@@ -25,6 +28,19 @@ HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib_config.sh
 source "$HOOK_DIR/lib_config.sh"
 [ "$(resolve_state check_before_build "$STATE")" = "off" ] && exit 0
+
+# Placement (v1.2.0, hooks/tool_home.py): rule #4 also asks WHERE a new tool belongs.
+# With `tool_homes` configured, a script must say home=<scope> (and live in that home)
+# or home=project consumer=<what uses it>. Without it, behaviour is unchanged.
+TOOL_HOME="$HOOK_DIR/tool_home.py"
+if [ "$TOOL" = "Bash" ]; then
+  [ -f "$TOOL_HOME" ] || exit 0
+  # cheap pre-filter: only a mover verb AND a scripts/ path is worth starting python for
+  echo "$INPUT" | grep -qE '(^|[^a-z_])(mv|cp|install|ln)[[:space:]]' || exit 0
+  echo "$INPUT" | grep -q 'scripts' || exit 0
+  echo "$INPUT" | python3 "$TOOL_HOME" bash
+  exit $?
+fi
 
 FILE_PATH=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))" 2>/dev/null)
 CONTENT=$(echo "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('content',''))" 2>/dev/null)
@@ -55,6 +71,11 @@ BASENAME=$(basename "$FILE_PATH")
 case "$BASENAME" in
   test_*|*_test.py|*.test.js|*.test.ts) exit 0 ;;
 esac
+
+if [ -f "$TOOL_HOME" ]; then
+  echo "$INPUT" | python3 "$TOOL_HOME" write
+  exit $?
+fi
 
 echo "$CONTENT" | grep -qE '(#|//) *build-ok:' && exit 0
 
