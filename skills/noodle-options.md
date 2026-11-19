@@ -7,7 +7,7 @@ description: Configure no-noodles enforcement (rule 1 ad-hoc-probe blocking, rul
 
 Lets the user tune no-noodles enforcement instead of it being one global on/off switch. Five
 independent rules (`no_ad_hoc_probes`, `compound_probes`, `check_before_build`, `hang_guard`,
-`risk_scoring`), two independent
+`ask_gate`, `risk_scoring`), two independent
 scopes (this project only, or the global default), on or off.
 
 `risk_scoring` (docs/RISK_MODEL_PLAN.md) is a much broader surface than the other two rules —
@@ -23,10 +23,10 @@ marker + trust + a distinct env var) rather than a binary block.
 2. Global `$CLAUDE_CONFIG_DIR/no-noodles.json` (`~/.claude/no-noodles.json` by default).
 3. Legacy per-rule state file (`~/.claude/no-noodle.state`, `~/.claude/check-before-build.state`)
    — the original all-or-nothing toggle, still honored, never removed.
-4. Default: on for `no_ad_hoc_probes`/`compound_probes`/`check_before_build`/`hang_guard`;
+4. Default: on for `no_ad_hoc_probes`/`compound_probes`/`check_before_build`/`hang_guard`/`ask_gate`;
    **off** for `risk_scoring`. (`compound_probes` lives inside the rule-1 hook, so turning
    `no_ad_hoc_probes` off silences it too.) Legacy state files for the new keys:
-   `compound-probes.state`, `hang-guard.state`.
+   `compound-probes.state`, `hang-guard.state`, `ask-gate.state`.
 
 ## What to do when invoked
 
@@ -37,7 +37,7 @@ marker + trust + a distinct env var) rather than a binary block.
 2. Summarize the current effective state for both rules in one or two lines before asking
    anything — the user may just want to know, not change anything.
 3. Ask (AskUserQuestion) what to change: which rule(s) (`no_ad_hoc_probes`, `compound_probes`,
-   `check_before_build`, `hang_guard`, `risk_scoring`), which scope (this project / global), and the new value (on/off). Don't assume —
+   `check_before_build`, `hang_guard`, `ask_gate`, `risk_scoring`), which scope (this project / global), and the new value (on/off). Don't assume —
    a user who says "turn off noodle checks here" means project-local + both rules; a user who
    says "I always want check-before-build off" means global + that one rule.
 4. Write only the keys that changed, preserving any other existing keys already in that JSON

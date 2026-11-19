@@ -41,6 +41,8 @@ RC=$?
 [ -x "$FAKE_CLAUDE/hooks/grant_session_trust.sh" ]; check "grant_session_trust.sh installed and executable" $?
 [ -x "$FAKE_CLAUDE/hooks/hang_guard.sh" ]; check "hang_guard.sh installed and executable" $?
 [ -f "$FAKE_CLAUDE/hooks/hang_guard.py" ]; check "hang_guard.py installed" $?
+[ -f "$FAKE_CLAUDE/hooks/tool_home.py" ]; check "tool_home.py installed (placement, v1.2.0)" $?
+[ -x "$FAKE_CLAUDE/hooks/ask_gate.sh" ]; check "ask_gate.sh installed and executable (v1.3.0)" $?
 [ -f "$FAKE_CLAUDE/skills/no-noodle.md" ]; check "skill doc installed" $?
 [ -f "$FAKE_CLAUDE/skills/noodle-options.md" ]; check "noodle-options skill installed" $?
 
@@ -84,8 +86,9 @@ assert any('no_noodle.sh' in c for c in cmds), 'no_noodle.sh not registered'
 assert any('check_before_build.sh' in c for c in cmds), 'check_before_build.sh not registered'
 assert any('risk_gate.sh' in c for c in cmds), 'risk_gate.sh not registered'
 assert any('hang_guard.sh' in c for c in cmds), 'hang_guard.sh not registered'
+assert any('ask_gate.sh' in c for c in cmds), 'ask_gate.sh not registered'
 "
-[ "$?" -eq 0 ]; check "all three hooks registered in settings.json" $?
+[ "$?" -eq 0 ]; check "all hooks (incl. ask_gate) registered in settings.json" $?
 
 # --- real incident (2026-07-16): hook commands must use the RESOLVED
 # CLAUDE_CONFIG_DIR, not a hardcoded ~/.claude -- otherwise `~` expands to
@@ -157,6 +160,14 @@ RC=$?
 [ ! -f "$FAKE_CLAUDE/hooks/risk-rules.json" ]; check "risk-rules.json removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/risk_summary.py" ]; check "risk_summary.py removed" $?
 [ ! -f "$FAKE_CLAUDE/hooks/grant_session_trust.sh" ]; check "grant_session_trust.sh removed" $?
+[ ! -f "$FAKE_CLAUDE/hooks/tool_home.py" ]; check "tool_home.py removed" $?
+[ ! -f "$FAKE_CLAUDE/hooks/ask_gate.sh" ]; check "ask_gate.sh removed" $?
+python3 -c "
+import json
+cmds = [h.get('command','') for g in json.load(open('$FAKE_CLAUDE/settings.json'))['hooks']['PreToolUse'] for h in g.get('hooks',[])]
+assert not any('ask_gate.sh' in c for c in cmds)
+"
+check "ask_gate.sh unregistered on uninstall" $?
 [ -f "$FAKE_CLAUDE/no-noodles/observations.jsonl" ]; check "uninstall preserves accumulated observations.jsonl (not disposable state)" $?
 # The stamp describes what IS installed, so uninstalling must clear it — leaving a
 # version behind would claim the package is present when it isn't, which is the

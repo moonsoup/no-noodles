@@ -36,6 +36,7 @@ HOOK_GRANT_TRUST="$CLAUDE_DIR/hooks/grant_session_trust.sh"
 HOOK_HANG_GUARD="$CLAUDE_DIR/hooks/hang_guard.sh"
 HOOK_HANG_GUARD_PY="$CLAUDE_DIR/hooks/hang_guard.py"
 HOOK_TOOL_HOME_PY="$CLAUDE_DIR/hooks/tool_home.py"
+HOOK_ASK_GATE="$CLAUDE_DIR/hooks/ask_gate.sh"
 SKILL_FILE="$CLAUDE_DIR/skills/no-noodle.md"
 SKILL_OPTIONS_FILE="$CLAUDE_DIR/skills/noodle-options.md"
 # ALSO install as commands, because a flat `.md` under skills/ is NOT loaded.
@@ -66,12 +67,12 @@ uninstall() {
   # is gone — the same false-presence trap that hid the unloadable skill.
   rm -f "$VERSION_STAMP"
   rm -f "$HOOK_RISK_GATE" "$HOOK_LIB_RISK" "$HOOK_LIB_OBSERVE" "$HOOK_RISK_SCORE_PY" "$HOOK_RISK_RULES" "$HOOK_RISK_SUMMARY_PY" "$HOOK_GRANT_TRUST"
-  rm -f "$HOOK_HANG_GUARD" "$HOOK_HANG_GUARD_PY" "$HOOK_TOOL_HOME_PY"
+  rm -f "$HOOK_HANG_GUARD" "$HOOK_HANG_GUARD_PY" "$HOOK_TOOL_HOME_PY" "$HOOK_ASK_GATE"
   # Deliberately NOT removing $CLAUDE_DIR/no-noodles/ (observations.jsonl,
   # risk-profile.json, session-trust) -- that's accumulated training data +
   # audit trail (per the plan), not disposable state like the .state toggles
   # below. Uninstalling the hooks shouldn't silently destroy it.
-  rm -f "$CLAUDE_DIR/no-noodle.state" "$CLAUDE_DIR/check-before-build.state" "$CLAUDE_DIR/no-noodles.json" "$CLAUDE_DIR/risk-gate.state" "$CLAUDE_DIR/hang-guard.state" "$CLAUDE_DIR/compound-probes.state"
+  rm -f "$CLAUDE_DIR/no-noodle.state" "$CLAUDE_DIR/check-before-build.state" "$CLAUDE_DIR/no-noodles.json" "$CLAUDE_DIR/risk-gate.state" "$CLAUDE_DIR/hang-guard.state" "$CLAUDE_DIR/compound-probes.state" "$CLAUDE_DIR/ask-gate.state"
   if [ -f "$SETTINGS" ] && command -v python3 >/dev/null 2>&1; then
     python3 - "$SETTINGS" <<'PYEOF'
 import json, sys
@@ -83,7 +84,8 @@ for entry in data.get("hooks", {}).get("PreToolUse", []):
                        if "no_noodle.sh" not in h.get("command", "")
                        and "check_before_build.sh" not in h.get("command", "")
                        and "risk_gate.sh" not in h.get("command", "")
-                       and "hang_guard.sh" not in h.get("command", "")]
+                       and "hang_guard.sh" not in h.get("command", "")
+                       and "ask_gate.sh" not in h.get("command", "")]
 with open(path, "w") as f:
     json.dump(data, f, indent=1)
     f.write("\n")
@@ -112,6 +114,8 @@ cp "$PKG_DIR/hooks/grant_session_trust.sh" "$HOOK_GRANT_TRUST"
 cp "$PKG_DIR/hooks/hang_guard.sh" "$HOOK_HANG_GUARD"
 cp "$PKG_DIR/hooks/hang_guard.py" "$HOOK_HANG_GUARD_PY"
 cp "$PKG_DIR/hooks/tool_home.py" "$HOOK_TOOL_HOME_PY"
+cp "$PKG_DIR/hooks/ask_gate.sh" "$HOOK_ASK_GATE"
+chmod +x "$HOOK_ASK_GATE"
 cp "$PKG_DIR/skills/no-noodle.md" "$SKILL_FILE"
 cp "$PKG_DIR/skills/noodle-options.md" "$SKILL_OPTIONS_FILE"
 # Same bytes, invocable location — one source of truth, two install paths.
@@ -150,6 +154,7 @@ to_add = [
     {"type": "command", "command": f"bash {claude_dir}/hooks/check_before_build.sh", "statusMessage": "Check-before-build check..."},
     {"type": "command", "command": f"bash {claude_dir}/hooks/risk_gate.sh", "statusMessage": "Risk gate check..."},
     {"type": "command", "command": f"bash {claude_dir}/hooks/hang_guard.sh", "statusMessage": "Hang guard check..."},
+    {"type": "command", "command": f"bash {claude_dir}/hooks/ask_gate.sh", "statusMessage": "Ask gate check..."},
 ]
 added = 0
 for h in to_add:
@@ -165,7 +170,7 @@ print(f"no-noodles: registered {added} new hook(s) in {path} (already present: {
 PYEOF
 
 echo ""
-echo "no-noodles: installed. no_noodle.sh, check_before_build.sh and hang_guard.sh are ON by default."
+echo "no-noodles: installed. no_noodle.sh, check_before_build.sh, hang_guard.sh and ask_gate.sh are ON by default."
 echo "  risk_gate.sh (weighted risk scoring, docs/RISK_MODEL_PLAN.md) is OFF by default --"
 echo "  it scores every Bash command, a much broader surface than the other two rules."
 echo "  Turn it on: echo '{\"risk_scoring\": \"on\"}' > $CLAUDE_DIR/no-noodles.json (or via /noodle-options)."

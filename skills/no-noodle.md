@@ -34,6 +34,15 @@ Before any Bash call, the STOP CHECK: *could this be a script?* If it touches da
 
 ## 2. Drive to done — don't hand back
 Do not end a turn on a decision you can make. **Recommendations replace questions.** Stop only when (a) every acceptance criterion + quality check is green, or (b) you are *genuinely* blocked and can name the exact blocker (wall-clock/compute/external permission). "Want me to continue / do X or Y?" at a green check is a noodle. Keep going.
+- **A question never stops the work (v1.3.0, enforced by `ask_gate.sh`).** AskUserQuestion
+  blocks the whole session until the owner answers. Before asking, start every task that does
+  not depend on the answer in the background (Agent with `run_in_background`, Bash
+  `run_in_background`, or a fork); the question then blocks only the step that needs it. The
+  hook blocks the first ask; asking again within 120 s passes. A genuinely blocking decision
+  (credentials, a purchase) passes at once with `ask-ok: <reason>` in the question.
+- **An owner correction is answered with a mechanical change** — a rule, hook, test or
+  script that makes the mistake impossible or caught next time — not with an acknowledgement.
+  "Understood" with nothing changed means the same mistake recurs.
 
 ## 3. One thread
 Finish the current task before starting a related-but-different one. A tangent that "would be quick" is how a focused build becomes a sprawl. Note the side idea, finish the thread, then decide.
